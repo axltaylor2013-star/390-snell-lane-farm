@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Long Ridge Kennels</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#1a1a1a;color:#f0f0f0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+#header{background:linear-gradient(135deg,#1b4332,#2d6a4f);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.5);}
+#header h1{font-size:18px;font-weight:700;color:#fff;}
+#header h1 span{color:#95d5b2;}
+.countdown-badge{background:#8b0000;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:#fff;border:1px solid #c0392b;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+
+#tabs{display:flex;background:#111;border-bottom:2px solid #2d6a4f;flex-shrink:0;overflow-x:auto;}
+.tab{padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all 0.2s;}
+.tab:hover{color:#ccc;background:#1a1a1a;}
+.tab.active{color:#95d5b2;border-bottom-color:#95d5b2;background:#1a1a1a;}
+
+#content{flex:1;display:flex;overflow:hidden;}
+
+/* Map */
+#map-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#map-toolbar{background:#222;padding:6px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid #333;}
+#map{flex:1;}
+.zone-btn{padding:5px 10px;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;opacity:0.85;}
+.zone-btn:hover{opacity:1;transform:scale(1.05);}
+.zone-btn.active{opacity:1;outline:2px solid #fff;transform:scale(1.05);}
+.tool-divider{width:1px;height:24px;background:#444;flex-shrink:0;}
+.map-tool-btn{background:#333;color:#ccc;border:1px solid #555;border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;}
+.map-tool-btn:hover{background:#444;color:#fff;}
+#zone-list{background:#222;max-height:180px;overflow-y:auto;border-top:1px solid #333;flex-shrink:0;}
+.zone-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #2a2a2a;font-size:12px;cursor:pointer;}
+.zone-item:hover{background:#2a2a2a;}
+.zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.zone-name{flex:1;color:#ddd;}
+.zone-acres{color:#888;margin-right:6px;}
+.zone-actions button{background:none;border:none;color:#555;cursor:pointer;padding:2px 4px;font-size:12px;}
+.zone-actions button:hover{color:#fff;}
+
+/* Panels */
+.panel{flex:1;overflow-y:auto;padding:16px;display:none;}
+.panel.active{display:block;}
+.section-title{font-size:16px;font-weight:700;color:#95d5b2;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:space-between;}
+
+/* Cards */
+.card{background:#222;border-radius:8px;padding:14px;margin-bottom:12px;border:1px solid #333;position:relative;}
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.card h3{font-size:14px;color:#95d5b2;}
+.card p{font-size:13px;color:#aaa;line-height:1.6;}
+.edit-card-btn{background:none;border:1px solid #444;color:#666;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;}
+.edit-card-btn:hover{border-color:#95d5b2;color:#95d5b2;}
+
+/* Editable content */
+.editable-content{font-size:13px;color:#aaa;line-height:1.6;min-height:40px;}
+.editable-content[contenteditable=true]{border:1px dashed #444;border-radius:4px;padding:6px;outline:none;color:#ddd;}
+.editable-content[contenteditable=true]:focus{border-color:#95d5b2;}
+
+/* Calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;}
+.cal-month{background:#222;border-radius:8px;padding:12px;border:1px solid #333;}
+.cal-month h4{color:#95d5b2;font-size:13px;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px;}
+.cal-task{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;font-size:12px;padding:3px 4px;border-radius:4px;}
+.cal-task:hover{background:#2a2a2a;}
+.cal-task input[type=checkbox]{margin-top:2px;accent-color:#95d5b2;flex-shrink:0;}
+.cal-task.done span.task-text{text-decoration:line-through;color:#555;}
+.cal-task span.task-text{flex:1;color:#ccc;line-height:1.4;}
+.cal-task .del-task{background:none;border:none;color:#444;cursor:pointer;font-size:11px;flex-shrink:0;padding:0 2px;}
+.cal-task .del-task:hover{color:#ff6b6b;}
+.add-task-inline{display:flex;gap:6px;margin-top:8px;}
+.add-task-inline input{flex:1;background:#1a1a1a;border:1px solid #333;color:#ccc;border-radius:4px;padding:4px 8px;font-size:12px;}
+.add-task-inline input:focus{outline:none;border-color:#2d6a4f;}
+.add-task-inline button{background:#2d6a4f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;}
+.add-task-inline button:hover{background:#1b4332;}
+
+/* Equipment */
+.equip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
+.equip-card{background:#222;border-radius:8px;padding:14px;border:1px solid #333;cursor:pointer;transition:border-color 0.2s;}
+.equip-card:hover{border-color:#2d6a4f;}
+.equip-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;}
+.equip-meta{font-size:12px;color:#888;margin-bottom:8px;}
+.equip-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
+.status-good{background:#1b4332;color:#95d5b2;}
+.status-due{background:#7a3000;color:#ffa07a;}
+.status-overdue{background:#5c0000;color:#ff6b6b;}
+.service-bar{background:#333;border-radius:4px;height:6px;margin-top:8px;overflow:hidden;}
+.service-fill{height:100%;border-radius:4px;}
+
+/* Dove */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px;}
+.stat-box{background:#222;border-radius:8px;padding:14px;text-align:center;border:1px solid #333;}
+.stat-box .num{font-size:32px;font-weight:700;color:#95d5b2;}
+.stat-box .lbl{font-size:11px;color:#888;margin-top:4px;}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal{background:#1e1e1e;border-radius:10px;padding:20px;width:90%;max-width:500px;border:1px solid #444;max-height:85vh;overflow-y:auto;}
+.modal h3{color:#95d5b2;margin-bottom:14px;font-size:16px;}
+.modal label{display:block;font-size:12px;color:#888;margin-bottom:4px;margin-top:10px;}
+.modal input,.modal textarea,.modal select{width:100%;background:#2a2a2a;border:1px solid #444;color:#fff;border-radius:5px;padding:8px;font-size:13px;}
+.modal input:focus,.modal textarea:focus,.modal select:focus{outline:none;border-color:#2d6a4f;}
+.modal textarea{height:80px;resize:vertical;}
+.modal-btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;}
+.btn-primary{background:#2d6a4f;color:#fff;border:none;border-radius:5px;padding:8px 16px;cursor:pointer;font-size:13px;}
+.btn-primary:hover{background:#1b4332;}
+.btn-secondary{background:#333;color:#ccc;border:1px solid #555;border-radius:5px;padding:8px 16px;cursor:pointer;font-size:13px;}
+.btn-secondary:hover{background:#444;}
+.btn-danger{background:#8b0000;color:#fff;border:none;border-radius:5px;padding:8px 16px;cursor:pointer;font-size:13px;}
+.btn-danger:hover{background:#a00;}
+
+/* Photos */
+.photo-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.photo-thumb{width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid #444;cursor:pointer;}
+
+/* Save toast */
+#save-toast{position:fixed;bottom:24px;right:24px;background:#1b4332;color:#95d5b2;border:1px solid #2d6a4f;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;z-index:99999;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;}
+#save-toast.show{opacity:1;transform:translateY(0);}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#1a1a1a;}
+::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:#555;}
+.hidden{display:none!important;}
+
+/* Work Orders */
+.wo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.wo-filters{display:flex;gap:6px;flex-wrap:wrap;}
+.wo-filter-btn{background:#333;color:#888;border:1px solid #444;border-radius:16px;padding:4px 12px;font-size:11px;cursor:pointer;font-weight:600;}
+.wo-filter-btn:hover{color:#ccc;border-color:#666;}
+.wo-filter-btn.active{background:#2d6a4f;color:#95d5b2;border-color:#2d6a4f;}
+.wo-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;}
+.wo-card{background:#222;border-radius:8px;padding:14px;border:1px solid #333;cursor:pointer;transition:border-color 0.2s;}
+.wo-card:hover{border-color:#2d6a4f;}
+.wo-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.wo-card-title{font-size:14px;font-weight:700;color:#fff;}
+.wo-card-cat{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+.wo-cat-hay{background:#3a2d10;color:#e8c060;}
+.wo-cat-hunting{background:#3a1a10;color:#ff8060;}
+.wo-cat-equipment{background:#102a3a;color:#60afff;}
+.wo-cat-property{background:#102a1a;color:#95d5b2;}
+.wo-cat-mowing{background:#1a2a10;color:#90ef60;}
+.wo-priority-high{border-left:3px solid #ff6b6b;}
+.wo-priority-medium{border-left:3px solid #ffa07a;}
+.wo-priority-low{border-left:3px solid #95d5b2;}
+.wo-card-desc{font-size:12px;color:#888;margin-bottom:8px;line-height:1.4;}
+.wo-card-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:#555;flex-wrap:wrap;}
+.wo-status-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
+.wo-status-open{background:#3a2d10;color:#ffd700;}
+.wo-status-progress{background:#1b4332;color:#95d5b2;}
+.wo-status-done{background:#222;color:#555;}
+.wo-photos-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.wo-photo-thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid #444;}
+.wo-photo-label{font-size:9px;text-align:center;color:#666;margin-top:2px;}
+.wo-modal-photos{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.wo-modal-photo-col{flex:1;min-width:140px;}
+.wo-modal-photo-col h4{font-size:12px;color:#95d5b2;margin-bottom:6px;}
+.wo-modal-photo-col .photo-grid{min-height:60px;background:#1a1a1a;border:1px dashed #333;border-radius:6px;padding:6px;display:flex;flex-wrap:wrap;gap:4px;}
+.wo-empty{text-align:center;padding:40px;color:#555;font-size:14px;}
+
+/* Wildlife Seasons */
+.ws-status-bar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.ws-status-chip{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.ws-chip-open{background:rgba(39,174,96,0.15);color:#2ecc71;border:1px solid rgba(39,174,96,0.3);}
+.ws-chip-soon{background:rgba(241,196,15,0.15);color:#f1c40f;border:1px solid rgba(241,196,15,0.3);}
+.ws-chip-closed{background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);}
+.ws-category{margin-bottom:20px;}
+.ws-cat-header{font-size:15px;font-weight:700;padding:10px 14px;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:8px;}
+.ws-cat-deer{background:linear-gradient(135deg,#5a3e1b,#8b6914);color:#ffd700;}
+.ws-cat-turkey{background:linear-gradient(135deg,#3e1b1b,#8b2414);color:#ff6b35;}
+.ws-cat-small{background:linear-gradient(135deg,#1b3e2d,#2d6a4f);color:#95d5b2;}
+.ws-cat-waterfowl{background:linear-gradient(135deg,#1b2d3e,#2d4f6a);color:#87ceeb;}
+.ws-cat-migratory{background:linear-gradient(135deg,#3e2d1b,#6a4f2d);color:#deb887;}
+.ws-cat-furbearer{background:linear-gradient(135deg,#2d1b3e,#4f2d6a);color:#dda0dd;}
+.ws-cat-other{background:linear-gradient(135deg,#333,#555);color:#ccc;}
+.ws-season-list{border:1px solid #333;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;}
+.ws-season-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #2a2a2a;font-size:13px;gap:10px;transition:background 0.15s;}
+.ws-season-row:last-child{border-bottom:none;}
+.ws-season-row:hover{background:#2a2a2a;}
+.ws-species{flex:1;font-weight:600;color:#f0f0f0;min-width:140px;}
+.ws-type{color:#aaa;font-size:12px;min-width:100px;}
+.ws-dates{color:#ccc;flex:2;min-width:180px;}
+.ws-bag{color:#888;font-size:12px;min-width:100px;}
+.ws-badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;flex-shrink:0;}
+.ws-badge-open{background:rgba(39,174,96,0.2);color:#2ecc71;}
+.ws-badge-soon{background:rgba(241,196,15,0.2);color:#f1c40f;}
+.ws-badge-closed{background:rgba(231,76,60,0.2);color:#e74c3c;}
+.ws-timeline{width:100%;height:24px;background:#1a1a1a;border-radius:4px;margin-top:12px;position:relative;overflow:hidden;}
+.ws-timeline-seg{position:absolute;height:100%;border-radius:2px;opacity:0.7;}
+.ws-timeline-now{position:absolute;top:0;bottom:0;width:2px;background:#fff;z-index:2;}
+.ws-timeline-months{display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:2px;padding:0 2px;}
+.ws-notes{background:#222;border:1px solid #333;border-radius:8px;padding:16px;margin-top:16px;}
+.ws-disclaimer{font-size:11px;color:#666;margin-top:16px;padding:12px;background:#1a1a1a;border-radius:6px;border-left:3px solid #f1c40f;}
+
+/* Bird Tracker */
+.bird-species-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px;}
+.bird-card{background:#222;border-radius:8px;padding:16px;border:1px solid #333;position:relative;overflow:hidden;}
+.bird-card-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.bird-card-icon{font-size:36px;flex-shrink:0;}
+.bird-card-info h3{font-size:15px;color:#fff;margin-bottom:2px;}
+.bird-card-info .bird-sci{font-size:11px;color:#666;font-style:italic;}
+.bird-status-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.bird-status{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;}
+.bird-active{background:#1b4332;color:#95d5b2;}
+.bird-arriving{background:#3a2d10;color:#ffd700;}
+.bird-departing{background:#3a1a10;color:#ffa07a;}
+.bird-absent{background:#2a2a2a;color:#555;}
+.bird-resident{background:#1a2a3a;color:#60afff;}
+.bird-timeline{margin:10px 0;position:relative;}
+.bird-timeline-bar{height:20px;background:#1a1a1a;border-radius:10px;overflow:hidden;position:relative;display:flex;}
+.bird-timeline-seg{height:100%;transition:all 0.3s;}
+.bird-timeline-marker{position:absolute;top:-3px;width:2px;height:26px;background:#fff;z-index:2;border-radius:1px;}
+.bird-timeline-labels{display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:3px;padding:0 2px;}
+.bird-detail{font-size:12px;color:#888;line-height:1.5;margin-top:8px;}
+.bird-detail strong{color:#95d5b2;}
+.bird-season-badge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:8px;background:#333;color:#888;}
+.bird-season-open{background:#1b4332;color:#95d5b2;}
+.bird-hunt-dates{background:#2a2a2a;border-radius:6px;padding:8px 12px;margin-top:8px;font-size:12px;color:#aaa;border-left:3px solid #95d5b2;}
+.bird-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px;}
+.bird-summary-box{background:#222;border-radius:8px;padding:14px;text-align:center;border:1px solid #333;}
+.bird-summary-box .num{font-size:28px;font-weight:700;color:#95d5b2;}
+.bird-summary-box .lbl{font-size:11px;color:#888;margin-top:4px;}
+.bird-notes-card{background:#222;border-radius:8px;padding:14px;margin-top:16px;border:1px solid #333;}
+
+/* Weather & AI */
+.weather-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:800px){.weather-grid{grid-template-columns:1fr;}}
+.weather-current{background:#222;border-radius:8px;padding:16px;border:1px solid #333;display:flex;align-items:center;gap:16px;}
+.weather-temp{font-size:48px;font-weight:700;color:#95d5b2;}
+.weather-desc{font-size:14px;color:#aaa;}
+.weather-detail{font-size:12px;color:#666;margin-top:4px;}
+.weather-icon{font-size:48px;}
+.forecast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:12px;}
+.forecast-day{background:#222;border-radius:8px;padding:12px;text-align:center;border:1px solid #333;}
+.forecast-day .day-name{font-size:12px;color:#95d5b2;font-weight:600;margin-bottom:4px;}
+.forecast-day .day-icon{font-size:28px;margin:4px 0;}
+.forecast-day .day-temp{font-size:16px;font-weight:700;color:#fff;}
+.forecast-day .day-desc{font-size:11px;color:#888;margin-top:4px;line-height:1.3;}
+.ai-suggestions{margin-top:16px;}
+.ai-card{background:#1b4332;border-radius:8px;padding:14px;margin-bottom:10px;border:1px solid #2d6a4f;}
+.ai-card .ai-category{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.ai-cat-hay{color:#e8c060;}
+.ai-cat-hunting{color:#ff8060;}
+.ai-cat-equipment{color:#60afff;}
+.ai-cat-property{color:#95d5b2;}
+.ai-cat-mowing{color:#90ef60;}
+.ai-card .ai-text{font-size:13px;color:#d0d0d0;line-height:1.6;}
+.ai-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.ai-refresh-btn{background:#2d6a4f;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;}
+.ai-refresh-btn:hover{background:#1b4332;}
+.weather-loading{text-align:center;padding:40px;color:#666;font-size:14px;}
+.weather-error{background:#5c0000;border:1px solid #8b0000;border-radius:8px;padding:14px;color:#ff6b6b;font-size:13px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div style="font-size:22px;">🌾</div>
+  <h1>Long Ridge Kennels <span>· Grant County, KY</span></h1>
+  <div class="countdown-badge" id="dove-badge">🕊️ Dove Season: — days</div>
+  <div class="header-right">
+    <span style="font-size:12px;color:#95d5b2;font-weight:600;" id="clock"></span>
+  </div>
+</div>
+
+<div id="tabs">
+  <div class="tab active" data-tab="map">🗺️ Farm Map</div>
+  <div class="tab" data-tab="calendar">📅 Calendar</div>
+  <div class="tab" data-tab="equipment">🚜 Equipment</div>
+  <div class="tab" data-tab="dove">🎯 Dove Hunt</div>
+  <div class="tab" data-tab="pavilion">🏛️ Pavilion HQ</div>
+  <div class="tab" data-tab="weather">🌤️ Weather & AI</div>
+  <div class="tab" data-tab="birds">🦆 Bird Tracker</div>
+  <div class="tab" data-tab="seasons">🦌 Wildlife Seasons</div>
+</div>
+
+<div id="content">
+
+  <!-- ===== MAP ===== -->
+  <div id="map-panel">
+    <div id="map-toolbar">
+      <span style="font-size:11px;color:#666;font-weight:600;flex-shrink:0;">DRAW:</span>
+      <button class="zone-btn active" id="btn-hay"       style="background:#c8a84b;color:#000;" onclick="setZone('hay')">🌾 Hay</button>
+      <button class="zone-btn"       id="btn-woods"      style="background:#2d6a2d;color:#fff;" onclick="setZone('woods')">🌲 Woods</button>
+      <button class="zone-btn"       id="btn-sunflower"  style="background:#d4a800;color:#000;" onclick="setZone('sunflower')">🌻 Sunflower</button>
+      <button class="zone-btn"       id="btn-dove"       style="background:#e07b54;color:#fff;" onclick="setZone('dove')">🎯 Dove</button>
+      <button class="zone-btn"       id="btn-deer"       style="background:#7aad4f;color:#000;" onclick="setZone('deer')">🦌 Deer</button>
+      <button class="zone-btn"       id="btn-water"      style="background:#3a7fd5;color:#fff;" onclick="setZone('water')">💧 Pond</button>
+      <button class="zone-btn"       id="btn-pavilion"   style="background:#c0392b;color:#fff;" onclick="setZone('pavilion')">🏛️ Pavilion</button>
+      <button class="zone-btn"       id="btn-road"       style="background:#a08060;color:#fff;" onclick="setZone('road')">🛤️ Road</button>
+      <div class="tool-divider"></div>
+      <button class="map-tool-btn" onclick="toggleZones()">👁️ Toggle Zones</button>
+      <button class="map-tool-btn" onclick="exportGeoJSON()">📤 Export</button>
+      <button class="map-tool-btn" onclick="clearAllZones()">🗑️ Clear All</button>
+      <span id="acres-display" style="margin-left:auto;font-size:12px;color:#95d5b2;font-weight:600;white-space:nowrap;"></span>
+    </div>
+    <div id="map"></div>
+    <div id="zone-list"></div>
+  </div>
+
+  <!-- ===== CALENDAR ===== -->
+  <div class="panel" id="calendar-panel">
+    <div class="section-title">📅 Farm Task Calendar 2026</div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <!-- ===== EQUIPMENT ===== -->
+  <div class="panel" id="equipment-panel">
+    <div class="section-title">
+      🚜 Equipment Tracker
+      <button class="map-tool-btn" onclick="openAddEquip()">+ Add Equipment</button>
+    </div>
+    <div class="equip-grid" id="equip-grid"></div>
+  </div>
+
+  <!-- ===== DOVE HUNT ===== -->
+  <div class="panel" id="dove-panel">
+    <div class="section-title">🎯 Dove Hunt Command Center</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num" id="dove-days">—</div><div class="lbl">Days Until Sep 1 Opener</div></div>
+      <div class="stat-box"><div class="num" id="dove-acres">0</div><div class="lbl">Dove / Sunflower Acres</div></div>
+      <div class="stat-box"><div class="num" id="dove-plots">0</div><div class="lbl">Active Plots on Map</div></div>
+      <div class="stat-box"><div class="num">Sep 1</div><div class="lbl">Kentucky 2026 Opener</div></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title-row">
+        <h3>🌻 Sunflower Plot Timeline</h3>
+        <button class="edit-card-btn" onclick="toggleEdit('dove-timeline')">✏️ Edit</button>
+      </div>
+      <div class="editable-content" id="dove-timeline" data-key="doveTimeline">Late March–April: Disk &amp; prep fields
+May 1–15: Plant sunflowers (90-day variety)
+July 15–Aug 1: Monitor for maturity
+Late August: Knock down / disk strips for dove
+September 1: 🎯 Opening Day!</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <h3>📋 Pre-Season Checklist</h3>
+        <button class="map-tool-btn" onclick="addDoveCheck()" style="font-size:11px;padding:3px 8px;">+ Item</button>
+      </div>
+      <div id="dove-checklist"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <h3>📝 Hunt Notes</h3>
+        <button class="edit-card-btn" onclick="toggleEdit('dove-notes')">✏️ Edit</button>
+      </div>
+      <div class="editable-content" id="dove-notes" data-key="doveNotes">Add scouting notes, guest lists, past season results, or anything else here...</div>
+    </div>
+  </div>
+
+  <!-- ===== PAVILION ===== -->
+  <div class="panel" id="pavilion-panel">
+    <div class="section-title">🏛️ Pavilion HQ</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;" id="pavilion-grid">
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>👨‍👩‍👧‍👦 Family Events</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-family')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-family" data-key="pavFamily">Add upcoming family events, reunion dates, cookouts, and gatherings at the pavilion here.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>🎣 Fishing Spots</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-fishing')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-fishing" data-key="pavFishing">Track pond locations, fish species stocked, and best fishing times. Mark ponds on the map using the 💧 Pond zone.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>🔥 Fire Pit &amp; Camping</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-fire')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-fire" data-key="pavFire">Mark camping areas and fire pits on the map. Coordinate with dove hunters for overnight stays during opening weekend.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>📦 Supply &amp; Inventory</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-supply')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-supply" data-key="pavSupply">Log seed, fuel, fencing supplies, and reorder points here. Update before each season.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>🌡️ Weather &amp; Contacts</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-weather')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-weather" data-key="pavWeather">Grant County NWS: weather.gov/ILN
+Vet / Farm Supply: add number here
+Neighbor contacts: add here</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>📍 Farm Info</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-info')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-info" data-key="pavInfo">Long Ridge Kennels · Dry Ridge, KY 41035
+Grant County · ~400 acres
+Coords: 38.6031996, -84.7712035
+Owner: Jeremy Kermicle</div>
+      </div>
+
+      <div class="card" style="grid-column:1/-1;">
+        <div class="card-title-row">
+          <h3>📋 General Farm Notes</h3>
+          <button class="edit-card-btn" onclick="toggleEdit('pav-general')">✏️ Edit</button>
+        </div>
+        <div class="editable-content" id="pav-general" data-key="pavGeneral" style="min-height:80px;">Use this section for anything — lease agreements, soil test results, crop rotation plans, hunting rules for guests, emergency info, etc.</div>
+      </div>
+
+    </div>
+
+    <!-- Work Orders Section -->
+    <div class="section-title" style="margin-top:20px;">
+      📋 Work Orders
+      <button class="map-tool-btn" onclick="openAddWO()">+ New Work Order</button>
+    </div>
+    <div class="wo-header">
+      <div class="wo-filters">
+        <button class="wo-filter-btn active" onclick="filterWO('all',this)">All</button>
+        <button class="wo-filter-btn" onclick="filterWO('open',this)">Open</button>
+        <button class="wo-filter-btn" onclick="filterWO('progress',this)">In Progress</button>
+        <button class="wo-filter-btn" onclick="filterWO('done',this)">Done</button>
+      </div>
+    </div>
+    <div class="wo-list" id="wo-list"></div>
+
+  </div>
+
+  <!-- WORK ORDER MODAL -->
+  <div class="modal-overlay hidden" id="wo-modal">
+    <div class="modal" style="max-width:560px;">
+      <h3 id="wo-modal-title">📋 New Work Order</h3>
+      <label>Title</label>
+      <input id="wo-title" type="text" placeholder="e.g. Fix south fence line"/>
+      <label>Category</label>
+      <select id="wo-category">
+        <option value="property">🏡 General Property</option>
+        <option value="hay">🌾 Hay & Field Work</option>
+        <option value="mowing">🌿 Mowing & Weed Eating</option>
+        <option value="hunting">🎯 Hunting Prep</option>
+        <option value="equipment">🚜 Equipment</option>
+      </select>
+      <label>Priority</label>
+      <select id="wo-priority">
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="low">Low</option>
+      </select>
+      <label>Status</label>
+      <select id="wo-status">
+        <option value="open">Open</option>
+        <option value="progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+      <label>Description</label>
+      <textarea id="wo-desc" placeholder="Describe the work needed..."></textarea>
+      <div class="wo-modal-photos">
+        <div class="wo-modal-photo-col">
+          <h4>📸 Before Photos</h4>
+          <input type="file" id="wo-before-photos" accept="image/*" multiple style="font-size:12px;color:#ccc;background:none;border:none;padding:4px 0;width:100%;"/>
+          <div class="photo-grid" id="wo-before-preview"></div>
+        </div>
+        <div class="wo-modal-photo-col">
+          <h4>✅ After Photos</h4>
+          <input type="file" id="wo-after-photos" accept="image/*" multiple style="font-size:12px;color:#ccc;background:none;border:none;padding:4px 0;width:100%;"/>
+          <div class="photo-grid" id="wo-after-preview"></div>
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-danger" id="wo-delete-btn" onclick="deleteWO()" style="display:none;">🗑️ Delete</button>
+        <button class="btn-secondary" onclick="closeModal('wo-modal')">Cancel</button>
+        <button class="btn-primary" onclick="saveWO()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO VIEWER MODAL -->
+  <div class="modal-overlay hidden" id="photo-viewer-modal" onclick="closeModal('photo-viewer-modal')">
+    <div style="max-width:90vw;max-height:90vh;display:flex;align-items:center;justify-content:center;">
+      <img id="photo-viewer-img" style="max-width:90vw;max-height:85vh;border-radius:8px;box-shadow:0 4px 30px rgba(0,0,0,0.8);"/>
+    </div>
+  </div>
+
+  <!-- ===== WEATHER & AI ===== -->
+  <div class="panel" id="weather-panel">
+    <div class="section-title">🌤️ Weather & AI Farm Advisor</div>
+    <div id="weather-status" class="weather-loading">Loading weather data for Dry Ridge, KY...</div>
+    <div id="weather-content" style="display:none;">
+      <div class="weather-grid">
+        <div class="weather-current" id="weather-current"></div>
+        <div class="card" id="weather-alerts-card" style="display:none;">
+          <h3 style="color:#ff6b6b;">⚠️ Active Alerts</h3>
+          <div id="weather-alerts" style="font-size:13px;color:#ffa07a;margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="section-title" style="margin-top:16px;">📅 7-Day Forecast</div>
+      <div class="forecast-grid" id="forecast-grid"></div>
+      <div class="ai-suggestions">
+        <div class="ai-header">
+          <div class="section-title" style="margin:0;border:none;padding:0;">🤖 Today's AI Farm Suggestions</div>
+          <button class="ai-refresh-btn" onclick="generateAISuggestions()">🔄 Refresh</button>
+        </div>
+        <div id="ai-suggestions-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BIRD TRACKER ===== -->
+  <div class="panel" id="birds-panel">
+    <div class="section-title">🦆 Migratory Game Bird Tracker — Grant County, KY</div>
+    <div class="bird-summary-grid" id="bird-summary"></div>
+    <div class="section-title" style="margin-top:20px;">Species Migration Status</div>
+    <div class="bird-species-grid" id="bird-species-grid"></div>
+    <div class="bird-notes-card">
+      <div class="card-title-row">
+        <h3>📝 Scouting Notes</h3>
+        <button class="edit-card-btn" onclick="toggleEdit('bird-notes')">✏️ Edit</button>
+      </div>
+      <div class="editable-content" id="bird-notes" data-key="birdNotes">Log bird sightings, flock sizes, flight patterns, and scouting observations here. Note which ponds waterfowl are using and what fields doves are feeding in.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="seasons-panel">
+    <div class="section-title">🦌 Kentucky Wildlife Seasons — Zone 1 (Grant County)</div>
+    <div class="ws-status-bar" id="ws-status-bar"></div>
+    <div class="ws-timeline" id="ws-year-timeline"></div>
+    <div class="ws-timeline-months" id="ws-year-months"></div>
+    <div id="ws-categories" style="margin-top:20px;"></div>
+    <div class="ws-disclaimer">⚠️ Season dates shown are for the 2025–2026 Kentucky hunting year. Always verify current regulations at <strong>fw.ky.gov</strong> before hunting. Dates, bag limits, and zone boundaries may change. A valid Kentucky hunting license and appropriate permits are required.</div>
+  </div>
+
+</div><!-- end #content -->
+
+<!-- Save Toast -->
+<div id="save-toast">✅ Saved!</div>
+
+<!-- ZONE NOTES MODAL -->
+<div class="modal-overlay hidden" id="notes-modal">
+  <div class="modal">
+    <h3>📝 Zone Details</h3>
+    <label>Zone Name</label>
+    <input id="notes-name" type="text" placeholder="e.g. North Hay Field"/>
+    <label>Notes</label>
+    <textarea id="notes-text" placeholder="Add notes about this zone..."></textarea>
+    <label>Add Photos</label>
+    <input type="file" id="notes-photos" accept="image/*" multiple style="font-size:12px;color:#ccc;background:none;border:none;padding:4px 0;"/>
+    <div class="photo-grid" id="notes-photo-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-danger" onclick="deleteZone()">🗑️ Delete Zone</button>
+      <button class="btn-secondary" onclick="closeModal('notes-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveNotes()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EQUIPMENT MODAL -->
+<div class="modal-overlay hidden" id="equip-modal">
+  <div class="modal">
+    <h3 id="equip-modal-title">🚜 Equipment</h3>
+    <label>Name / Description</label>
+    <input id="equip-name" type="text" placeholder="e.g. John Deere 5075E Tractor"/>
+    <label>Year</label>
+    <input id="equip-year" type="text" placeholder="e.g. 2019"/>
+    <label>Last Service Date</label>
+    <input id="equip-service-date" type="date"/>
+    <label>Service Interval (days)</label>
+    <input id="equip-interval" type="number" placeholder="90" value="90"/>
+    <label>Hours / Miles</label>
+    <input id="equip-hours" type="text" placeholder="e.g. 342 hrs"/>
+    <label>Notes</label>
+    <textarea id="equip-notes" placeholder="Maintenance notes, issues, mods..."></textarea>
+    <div class="modal-btns">
+      <button class="btn-danger" id="equip-delete-btn" onclick="deleteEquip()" style="display:none;">🗑️ Delete</button>
+      <button class="btn-secondary" onclick="closeModal('equip-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveEquip()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DOVE CHECK MODAL -->
+<div class="modal-overlay hidden" id="dove-check-modal">
+  <div class="modal">
+    <h3>➕ Add Checklist Item</h3>
+    <label>Item</label>
+    <input id="dove-check-input" type="text" placeholder="e.g. Buy licenses"/>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('dove-check-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveDoveCheck()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// STORAGE KEYS
+// ─────────────────────────────────────────────
+const KEYS = {
+  zones:   'snellZones_v4',
+  equip:   'snellEquipment',
+  tasks:   'snellCalTasks',
+  dove:    'snellDoveChecks',
+  content: 'snellContent',
+};
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showSaved(msg='✅ Saved!'){
+  const t=document.getElementById('save-toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ─────────────────────────────────────────────
+// EDITABLE CONTENT (Pavilion + Dove cards)
+// ─────────────────────────────────────────────
+let contentStore = {};
+function loadContent(){
+  try{ contentStore=JSON.parse(localStorage.getItem(KEYS.content)||'{}'); }catch(e){}
+  document.querySelectorAll('.editable-content[data-key]').forEach(el=>{
+    const k=el.dataset.key;
+    if(contentStore[k]) el.innerHTML=contentStore[k].replace(/\n/g,'<br>');
+    else el.innerHTML=el.innerHTML; // keep default
+  });
+}
+function saveContent(el){
+  const k=el.dataset.key; if(!k) return;
+  contentStore[k]=el.innerText;
+  try{ localStorage.setItem(KEYS.content,JSON.stringify(contentStore)); }catch(e){}
+  showSaved();
+}
+function toggleEdit(id){
+  const el=document.getElementById(id);
+  const btn=el.previousElementSibling?.querySelector('.edit-card-btn')||el.parentElement.querySelector('.edit-card-btn');
+  const isEditing=el.getAttribute('contenteditable')==='true';
+  if(isEditing){
+    el.setAttribute('contenteditable','false');
+    btn.textContent='✏️ Edit';
+    saveContent(el);
+  }else{
+    el.setAttribute('contenteditable','true');
+    btn.textContent='💾 Save';
+    el.focus();
+    // place cursor at end
+    const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+}
+// Auto-save on blur for editable fields
+document.addEventListener('blur',function(e){
+  if(e.target.getAttribute('contenteditable')==='true' && e.target.dataset.key){
+    saveContent(e.target);
+    e.target.setAttribute('contenteditable','false');
+    const btn=e.target.parentElement.querySelector('.edit-card-btn');
+    if(btn) btn.textContent='✏️ Edit';
+  }
+},true);
+
+// ─────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────
+const LAT=38.6031996, LON=-84.7712035;
+const ZONES={
+  hay:      {label:'🌾 Hay Fields',     color:'#e8c060',fill:'#c8a84b',fillOpacity:0.12},
+  woods:    {label:'🌲 Game Preserve',  color:'#4adf4a',fill:'#2d6a2d',fillOpacity:0.12},
+  sunflower:{label:'🌻 Sunflowers',     color:'#ffe44a',fill:'#d4a800',fillOpacity:0.12},
+  dove:     {label:'🎯 Dove Plots',     color:'#ff8060',fill:'#e07b54',fillOpacity:0.12},
+  deer:     {label:'🦌 Deer Plots',     color:'#90ef60',fill:'#7aad4f',fillOpacity:0.12},
+  water:    {label:'💧 Ponds',          color:'#60afff',fill:'#3a7fd5',fillOpacity:0.22},
+  pavilion: {label:'🏛️ Pavilion HQ',   color:'#ff5050',fill:'#c0392b',fillOpacity:0.22},
+  road:     {label:'🛤️ Roads & Trails', color:'#d0b090',fill:'#a08060',fillOpacity:0.15},
+};
+
+const map=L.map('map',{center:[LAT,LON],zoom:16});
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'ESRI'}).addTo(map);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,opacity:0.7}).addTo(map);
+
+const drawnItems=new L.FeatureGroup().addTo(map);
+map.addControl(new L.Control.Draw({
+  draw:{polygon:{shapeOptions:{color:'#fff',weight:2,fillOpacity:0.08}},rectangle:{shapeOptions:{color:'#fff',weight:2,fillOpacity:0.08}},circle:false,marker:false,circlemarker:false,polyline:false},
+  edit:{featureGroup:drawnItems}
+}));
+
+L.circleMarker([LAT,LON],{radius:7,color:'#ff4444',fillColor:'#ff4444',fillOpacity:1,weight:2}).addTo(map).bindPopup('📍 Long Ridge Kennels — HQ');
+
+let zones=[], currentZoneType='hay', zonesVisible=true, editingZoneId=null;
+
+function setZone(t){
+  currentZoneType=t;
+  document.querySelectorAll('.zone-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+t).classList.add('active');
+}
+
+function getStyle(t){
+  const z=ZONES[t]||ZONES.hay;
+  return{color:z.color,weight:2,fillColor:z.fill,fillOpacity:z.fillOpacity};
+}
+
+function estimateAcres(layer){
+  try{
+    let pts=(layer instanceof L.Polygon)?layer.getLatLngs()[0]:[];
+    if(pts.length<3) return 0;
+    let area=0,n=pts.length;
+    for(let i=0;i<n;i++){const j=(i+1)%n;area+=pts[i].lng*pts[j].lat-pts[j].lng*pts[i].lat;}
+    const avgLat=pts.reduce((s,p)=>s+p.lat,0)/n;
+    return +(Math.abs(area/2)*111320*111320*Math.cos(avgLat*Math.PI/180)/4046.86).toFixed(1);
+  }catch(e){return 0;}
+}
+
+function addZoneLayer(zone){
+  let layer;
+  try{
+    layer=L.geoJSON(zone.geojson,{style:()=>getStyle(zone.type)}).getLayers()[0];
+    if(!layer) return;
+  }catch(e){return;}
+  layer._zoneId=zone.id;
+  layer.on('click',()=>openNotes(zone.id));
+  const lbl=(zone.name||ZONES[zone.type]?.label||zone.type);
+  layer.bindTooltip(lbl,{direction:'center',className:'leaflet-tooltip'});
+  drawnItems.addLayer(layer);
+  zone._layer=layer;
+}
+
+function renderAllZones(){
+  drawnItems.clearLayers();
+  zones.forEach(z=>addZoneLayer(z));
+  renderZoneList();
+  updateAcresDisplay();
+}
+
+function renderZoneList(){
+  const el=document.getElementById('zone-list');
+  if(!zones.length){el.innerHTML='';return;}
+  el.innerHTML=zones.map(z=>`
+    <div class="zone-item" onclick="openNotes('${z.id}')">
+      <div class="zone-dot" style="background:${ZONES[z.type]?.fill||'#888'}"></div>
+      <span class="zone-name">${z.name||ZONES[z.type]?.label||z.type}</span>
+      <span class="zone-acres">${z.acres} ac</span>
+      <div class="zone-actions">
+        <button onclick="event.stopPropagation();openNotes('${z.id}')">✏️</button>
+        <button onclick="event.stopPropagation();deleteZoneById('${z.id}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function updateAcresDisplay(){
+  const total=zones.reduce((s,z)=>s+(parseFloat(z.acres)||0),0);
+  document.getElementById('acres-display').textContent=total>0?`Total: ${total.toFixed(1)} ac`:'';
+  const dz=zones.filter(z=>z.type==='dove'||z.type==='sunflower');
+  const dAc=dz.reduce((s,z)=>s+(parseFloat(z.acres)||0),0);
+  const dEl=document.getElementById('dove-acres'); if(dEl) dEl.textContent=dAc.toFixed(1);
+  const pEl=document.getElementById('dove-plots'); if(pEl) pEl.textContent=dz.length;
+}
+
+function saveZones(){
+  try{localStorage.setItem(KEYS.zones,JSON.stringify(zones.map(z=>({id:z.id,type:z.type,geojson:z.geojson,name:z.name,acres:z.acres,notes:z.notes,photos:z.photos||[]}))));}catch(e){}
+  showSaved();
+}
+function loadZones(){
+  try{const r=localStorage.getItem(KEYS.zones);if(r) zones=JSON.parse(r).map(z=>({...z,photos:z.photos||[]}));}catch(e){zones=[];}
+  renderAllZones();
+}
+
+map.on(L.Draw.Event.CREATED,function(e){
+  const layer=e.layer;
+  const id='z_'+Date.now();
+  const zone={id,type:currentZoneType,geojson:layer.toGeoJSON(),name:ZONES[currentZoneType].label,acres:estimateAcres(layer),notes:'',photos:[]};
+  zones.push(zone);saveZones();renderAllZones();
+  setTimeout(()=>openNotes(id),200);
+});
+map.on(L.Draw.Event.EDITED,function(e){
+  e.layers.eachLayer(l=>{
+    const z=zones.find(x=>x.id===l._zoneId);
+    if(z){z.geojson=l.toGeoJSON();z.acres=estimateAcres(l);}
+  });
+  saveZones();renderAllZones();
+});
+map.on(L.Draw.Event.DELETED,function(e){
+  e.layers.eachLayer(l=>{zones=zones.filter(x=>x.id!==l._zoneId);});
+  saveZones();renderAllZones();
+});
+
+function toggleZones(){
+  zonesVisible=!zonesVisible;
+  drawnItems.eachLayer(l=>{
+    const id=l._zoneId, z=zones.find(x=>x.id===id);
+    l.setStyle({opacity:zonesVisible?1:0,fillOpacity:zonesVisible?(ZONES[z?.type]?.fillOpacity||0.12):0});
+  });
+}
+function clearAllZones(){
+  if(!confirm('Delete ALL zones? This cannot be undone.')) return;
+  zones=[];saveZones();renderAllZones();
+}
+function exportGeoJSON(){
+  const data=JSON.stringify({type:'FeatureCollection',features:zones.map(z=>({...z.geojson,properties:{name:z.name,type:z.type,acres:z.acres,notes:z.notes}}))},null,2);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+  a.download='long_ridge_kennels_zones.geojson';a.click();
+}
+
+// Zone notes modal
+let notesPhotos=[];
+function openNotes(id){
+  editingZoneId=id;
+  const z=zones.find(x=>x.id===id); if(!z) return;
+  document.getElementById('notes-name').value=z.name||'';
+  document.getElementById('notes-text').value=z.notes||'';
+  notesPhotos=[...(z.photos||[])];
+  renderPhotoPreview();
+  document.getElementById('notes-modal').classList.remove('hidden');
+}
+function renderPhotoPreview(){
+  document.getElementById('notes-photo-preview').innerHTML=notesPhotos.map((s,i)=>`<img class="photo-thumb" src="${s}" onclick="window.open('${s}','_blank')">`).join('');
+}
+document.getElementById('notes-photos').addEventListener('change',function(){
+  Array.from(this.files).forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{notesPhotos.push(e.target.result);renderPhotoPreview();};
+    r.readAsDataURL(f);
+  });this.value='';
+});
+function saveNotes(){
+  const z=zones.find(x=>x.id===editingZoneId); if(!z) return;
+  z.name=document.getElementById('notes-name').value||z.name;
+  z.notes=document.getElementById('notes-text').value;
+  z.photos=notesPhotos;
+  saveZones();renderAllZones();closeModal('notes-modal');
+}
+function deleteZone(){if(!confirm('Delete this zone?')) return;deleteZoneById(editingZoneId);closeModal('notes-modal');}
+function deleteZoneById(id){zones=zones.filter(x=>x.id!==id);saveZones();renderAllZones();}
+
+// ─────────────────────────────────────────────
+// CALENDAR
+// ─────────────────────────────────────────────
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DEFAULT_TASKS={
+  March:    ['Disk and prep sunflower fields','Service all equipment before season','Order sunflower seed (90-day variety)','Check and refill deer feeders','Inspect pond banks and dam'],
+  April:    ['Plant sunflowers early April','Lime fields if soil test shows need','Turkey season — scout and hunt','Repair fencing and gates','Service ATVs before spring work'],
+  May:      ['Plant late-variety sunflower fields','Monitor sunflower germination','Fertilize hay fields','Check pond water levels','Stock fish in ponds if needed'],
+  June:     ['First hay cutting','Spray weeds in food plots','Check sunflower progress','Mow pavilion area','Pull and check all game cameras'],
+  July:     ['Second hay cutting','Monitor sunflower maturity','Disk strips in plots for dove prep','Repair any storm damage','Set up dove field water sources'],
+  August:   ['Knock down sunflowers for dove fields','Disk dove plots','Third hay cutting if growth allows','Scout deer — velvet bucks on cameras','Prepare dove hunt camp and pavilion'],
+  September:['🎯 SEPTEMBER 1 — DOVE OPENER!','Dove hunt weekends','Plant fall food plots (clover, brassicas)','Check and hang deer stands','Bow season prep — practice shooting'],
+  October:  ['🦌 Bow season opens Oct 1','Hunt and monitor deer plots','Check trail cameras weekly','Plant winter wheat in plots','Place hay bales for deer bedding'],
+  November: ['🦌 Gun season opens Nov 14 (KY)','Push deer hunts — rut peak','Service all equipment before winter','Drain pond pump if applicable','Winterize pavilion plumbing'],
+  December: ['Year-end equipment service','Plan next year crop rotation','Order seed early for discount','Walk and check all fence lines','Christmas gathering at pavilion 🎄'],
+};
+
+let calTasks={};
+function loadCalTasks(){
+  try{const r=localStorage.getItem(KEYS.tasks);if(r) calTasks=JSON.parse(r);}catch(e){}
+  MONTHS.forEach(m=>{
+    if(!calTasks[m]){
+      calTasks[m]=(DEFAULT_TASKS[m]||[]).map(t=>({text:t,done:false,id:'dt_'+Math.random().toString(36).slice(2)}));
+    }
+  });
+}
+function saveCalTasks(){try{localStorage.setItem(KEYS.tasks,JSON.stringify(calTasks));}catch(e){}showSaved();}
+function renderCalendar(){
+  document.getElementById('cal-grid').innerHTML=MONTHS.map(m=>`
+    <div class="cal-month">
+      <h4>${m} 2026</h4>
+      ${(calTasks[m]||[]).map(t=>`
+        <div class="cal-task${t.done?' done':''}">
+          <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${m}','${t.id}',this.checked)">
+          <span class="task-text">${t.text}</span>
+          <button class="del-task" onclick="removeTask('${m}','${t.id}')" title="Remove">✕</button>
+        </div>`).join('')}
+      <div class="add-task-inline">
+        <input type="text" id="new-task-${m}" placeholder="Add task..." onkeydown="if(event.key==='Enter')addInlineTask('${m}')"/>
+        <button onclick="addInlineTask('${m}')">+</button>
+      </div>
+    </div>`).join('');
+}
+function toggleTask(m,id,done){
+  const t=calTasks[m]?.find(x=>x.id===id); if(t){t.done=done;saveCalTasks();renderCalendar();}
+}
+function removeTask(m,id){
+  calTasks[m]=calTasks[m].filter(x=>x.id!==id);saveCalTasks();renderCalendar();
+}
+function addInlineTask(m){
+  const el=document.getElementById('new-task-'+m);
+  const text=el.value.trim(); if(!text) return;
+  calTasks[m].push({text,done:false,id:'t_'+Date.now()});
+  saveCalTasks();renderCalendar();
+}
+
+// ─────────────────────────────────────────────
+// EQUIPMENT
+// ─────────────────────────────────────────────
+const DEFAULT_EQUIP=[
+  {id:'e1',name:'John Deere 5075E Tractor',year:'2019',lastService:'2025-10-15',interval:90,hours:'412 hrs',notes:'Oil & filter changed. Check hydraulics at next service.'},
+  {id:'e2',name:'Kubota BX23S Compact Tractor',year:'2021',lastService:'2025-12-01',interval:60,hours:'118 hrs',notes:'Used for pavilion mowing and light loader work.'},
+  {id:'e3',name:'Disc Harrow (7ft)',year:'2015',lastService:'2025-08-20',interval:180,hours:'',notes:'Grease all zerks before each season. Check blade condition yearly.'},
+  {id:'e4',name:'Hay Baler (Round)',year:'2017',lastService:'2025-07-10',interval:365,hours:'',notes:'Annual belt and twine inspection before hay season.'},
+  {id:'e5',name:'Polaris Ranger UTV',year:'2020',lastService:'2026-01-05',interval:90,hours:'890 mi',notes:'Check tire pressure and belt before dove season opener.'},
+];
+let equipment=[], editingEquipId=null;
+function loadEquipment(){
+  try{const r=localStorage.getItem(KEYS.equip);if(r) equipment=JSON.parse(r);}catch(e){}
+  if(!equipment.length) equipment=JSON.parse(JSON.stringify(DEFAULT_EQUIP));
+}
+function saveEquipment(){try{localStorage.setItem(KEYS.equip,JSON.stringify(equipment));}catch(e){}showSaved();}
+function getServiceStatus(e){
+  const last=new Date(e.lastService), now=new Date();
+  const days=Math.floor((now-last)/86400000);
+  const pct=Math.min(100,Math.floor(days/e.interval*100));
+  const daysLeft=e.interval-days;
+  return{pct,daysLeft,status:daysLeft<0?'overdue':daysLeft<14?'due':'good'};
+}
+function renderEquipment(){
+  document.getElementById('equip-grid').innerHTML=equipment.map(e=>{
+    const s=getServiceStatus(e);
+    const fillColor=s.status==='overdue'?'#ff6b6b':s.status==='due'?'#ffa07a':'#95d5b2';
+    return `<div class="equip-card" onclick="openEquip('${e.id}')">
+      <div class="equip-name">${e.name}</div>
+      <div class="equip-meta">${[e.year,e.hours].filter(Boolean).join(' · ')}</div>
+      <span class="equip-status status-${s.status}">${s.status==='good'?'✅ Good':'⚠️ Service '+(s.status==='overdue'?'OVERDUE':'Due Soon')}</span>
+      <div class="service-bar"><div class="service-fill" style="width:${s.pct}%;background:${fillColor}"></div></div>
+      <div style="font-size:11px;color:#555;margin-top:4px;">${s.daysLeft<0?Math.abs(s.daysLeft)+' days overdue':s.daysLeft+' days until service'}</div>
+      ${e.notes?`<div style="font-size:11px;color:#666;margin-top:6px;font-style:italic;">${e.notes.substring(0,80)}${e.notes.length>80?'…':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function openEquip(id){
+  editingEquipId=id;
+  const e=equipment.find(x=>x.id===id)||{};
+  document.getElementById('equip-modal-title').textContent='🚜 Edit Equipment';
+  document.getElementById('equip-name').value=e.name||'';
+  document.getElementById('equip-year').value=e.year||'';
+  document.getElementById('equip-service-date').value=e.lastService||'';
+  document.getElementById('equip-interval').value=e.interval||90;
+  document.getElementById('equip-hours').value=e.hours||'';
+  document.getElementById('equip-notes').value=e.notes||'';
+  document.getElementById('equip-delete-btn').style.display='inline-block';
+  document.getElementById('equip-modal').classList.remove('hidden');
+}
+function openAddEquip(){
+  editingEquipId=null;
+  document.getElementById('equip-modal-title').textContent='🚜 Add Equipment';
+  ['equip-name','equip-year','equip-service-date','equip-hours','equip-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('equip-interval').value=90;
+  document.getElementById('equip-delete-btn').style.display='none';
+  document.getElementById('equip-modal').classList.remove('hidden');
+}
+function saveEquip(){
+  const data={name:document.getElementById('equip-name').value,year:document.getElementById('equip-year').value,lastService:document.getElementById('equip-service-date').value,interval:parseInt(document.getElementById('equip-interval').value)||90,hours:document.getElementById('equip-hours').value,notes:document.getElementById('equip-notes').value};
+  if(editingEquipId){const e=equipment.find(x=>x.id===editingEquipId);if(e) Object.assign(e,data);}
+  else equipment.push({...data,id:'e_'+Date.now()});
+  saveEquipment();renderEquipment();closeModal('equip-modal');
+}
+function deleteEquip(){
+  if(!confirm('Delete this equipment record?')) return;
+  equipment=equipment.filter(x=>x.id!==editingEquipId);
+  saveEquipment();renderEquipment();closeModal('equip-modal');
+}
+
+// ─────────────────────────────────────────────
+// DOVE CHECKLIST
+// ─────────────────────────────────────────────
+const DEFAULT_DOVE_CHECKS=[
+  {text:'Order sunflower seed (90-day variety)',done:false},
+  {text:'Disk and prep all dove plots',done:false},
+  {text:'Plant sunflowers by May 15',done:false},
+  {text:'Set up water sources near plots',done:false},
+  {text:'Check KDFWR regulations for season',done:false},
+  {text:'Buy dove hunt licenses',done:false},
+  {text:'Invite hunters — confirm headcount',done:false},
+  {text:'Set up dove stands and layout blinds',done:false},
+  {text:'Knock down sunflowers late August',done:false},
+  {text:'Stock coolers and hunt supplies',done:false},
+  {text:'Set up pavilion for post-hunt cookout',done:false},
+];
+let doveChecks=[];
+function loadDoveChecks(){
+  try{const r=localStorage.getItem(KEYS.dove);if(r) doveChecks=JSON.parse(r);}catch(e){}
+  if(!doveChecks.length) doveChecks=DEFAULT_DOVE_CHECKS.map((x,i)=>({...x,id:'dc_'+i}));
+}
+function saveDoveChecks(){try{localStorage.setItem(KEYS.dove,JSON.stringify(doveChecks));}catch(e){}showSaved();}
+function renderDoveChecklist(){
+  document.getElementById('dove-checklist').innerHTML=doveChecks.map(item=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2a2a;">
+      <input type="checkbox" ${item.done?'checked':''} onchange="toggleDoveCheck('${item.id}',this.checked)" style="accent-color:#95d5b2;flex-shrink:0;">
+      <span style="flex:1;font-size:13px;color:${item.done?'#555':'#ccc'};${item.done?'text-decoration:line-through':''}">${item.text}</span>
+      <button onclick="deleteDoveCheck('${item.id}')" style="background:none;border:none;color:#444;cursor:pointer;font-size:11px;" title="Remove">✕</button>
+    </div>`).join('');
+}
+function toggleDoveCheck(id,v){const c=doveChecks.find(x=>x.id===id);if(c){c.done=v;saveDoveChecks();renderDoveChecklist();}}
+function deleteDoveCheck(id){doveChecks=doveChecks.filter(x=>x.id!==id);saveDoveChecks();renderDoveChecklist();}
+function addDoveCheck(){document.getElementById('dove-check-modal').classList.remove('hidden');document.getElementById('dove-check-input').value='';}
+function saveDoveCheck(){
+  const text=document.getElementById('dove-check-input').value.trim();if(!text) return;
+  doveChecks.push({text,done:false,id:'dc_'+Date.now()});
+  saveDoveChecks();renderDoveChecklist();closeModal('dove-check-modal');
+}
+
+// ─────────────────────────────────────────────
+// COUNTDOWN & CLOCK
+// ─────────────────────────────────────────────
+function updateCountdown(){
+  const diff=Math.ceil((new Date('2026-09-01')-new Date())/86400000);
+  const badge=document.getElementById('dove-badge');
+  const dEl=document.getElementById('dove-days');
+  if(diff>0){badge.textContent=`🕊️ Dove Season: ${diff} days`;if(dEl) dEl.textContent=diff;}
+  else{badge.textContent='🎯 DOVE SEASON IS OPEN!';badge.style.background='#d4a800';if(dEl) dEl.textContent='OPEN!';}
+}
+setInterval(()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}),1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+updateCountdown();
+
+// ─────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    const t=tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('map-panel').style.display='none';
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    if(t==='map'){
+      document.getElementById('map-panel').style.display='flex';
+      setTimeout(()=>map.invalidateSize(),80);
+    } else {
+      document.getElementById(t+'-panel').classList.add('active');
+      if(t==='dove'){renderDoveChecklist();}
+      if(t==='weather'){fetchWeather();}
+      if(t==='birds'){renderBirdTracker();}
+      if(t==='seasons'){renderWildlifeSeasons();}
+    }
+  });
+});
+
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el) el.classList.add('hidden');}));
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+loadContent();
+loadZones();
+loadCalTasks();
+renderCalendar();
+loadEquipment();
+renderEquipment();
+loadDoveChecks();
+
+// ─────────────────────────────────────────────
+// WEATHER & AI (NWS API for Dry Ridge, KY)
+// ─────────────────────────────────────────────
+let weatherData = null;
+let forecastData = null;
+const NWS_POINT = `https://api.weather.gov/points/${LAT},${LON}`;
+
+async function fetchWeather() {
+  const statusEl = document.getElementById('weather-status');
+  const contentEl = document.getElementById('weather-content');
+  try {
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Loading weather data for Dry Ridge, KY...';
+    contentEl.style.display = 'none';
+
+    const pointRes = await fetch(NWS_POINT, {headers:{'User-Agent':'LongRidgeKennels/1.0'}});
+    if (!pointRes.ok) throw new Error('NWS point lookup failed');
+    const pointData = await pointRes.json();
+    const forecastUrl = pointData.properties.forecast;
+    const stationUrl = pointData.properties.observationStations;
+
+    // Fetch forecast and current conditions in parallel
+    const [forecastRes, stationsRes] = await Promise.all([
+      fetch(forecastUrl, {headers:{'User-Agent':'LongRidgeKennels/1.0'}}),
+      fetch(stationUrl, {headers:{'User-Agent':'LongRidgeKennels/1.0'}})
+    ]);
+
+    if (!forecastRes.ok) throw new Error('Forecast fetch failed');
+    forecastData = await forecastRes.json();
+
+    // Get latest observation from nearest station
+    let currentObs = null;
+    if (stationsRes.ok) {
+      const stationsData = await stationsRes.json();
+      if (stationsData.features?.length) {
+        const stationId = stationsData.features[0].properties.stationIdentifier;
+        try {
+          const obsRes = await fetch(`https://api.weather.gov/stations/${stationId}/observations/latest`, {headers:{'User-Agent':'LongRidgeKennels/1.0'}});
+          if (obsRes.ok) currentObs = (await obsRes.json()).properties;
+        } catch(e) {}
+      }
+    }
+
+    renderWeather(forecastData, currentObs);
+    generateAISuggestions();
+    statusEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  } catch (err) {
+    statusEl.innerHTML = `<div class="weather-error">⚠️ Could not load weather data. Check your internet connection.<br><small>${err.message}</small></div><button class="ai-refresh-btn" onclick="fetchWeather()" style="margin-top:10px;">🔄 Try Again</button>`;
+  }
+}
+
+function getWeatherEmoji(desc) {
+  const d = (desc||'').toLowerCase();
+  if (d.includes('thunder') || d.includes('storm')) return '⛈️';
+  if (d.includes('rain') || d.includes('shower') || d.includes('drizzle')) return '🌧️';
+  if (d.includes('snow') || d.includes('sleet') || d.includes('ice')) return '❄️';
+  if (d.includes('fog') || d.includes('mist') || d.includes('haze')) return '🌫️';
+  if (d.includes('cloud') || d.includes('overcast')) return '☁️';
+  if (d.includes('partly')) return '⛅';
+  if (d.includes('wind')) return '💨';
+  if (d.includes('sunny') || d.includes('clear') || d.includes('fair')) return '☀️';
+  if (d.includes('hot')) return '🔥';
+  return '🌤️';
+}
+
+function cToF(c) { return c != null ? Math.round(c * 9/5 + 32) : null; }
+
+function renderWeather(forecast, obs) {
+  // Current conditions
+  const curEl = document.getElementById('weather-current');
+  let temp = '--';
+  let desc = 'Loading...';
+  let wind = '';
+  let humidity = '';
+
+  if (obs) {
+    const tC = obs.temperature?.value;
+    temp = tC != null ? cToF(tC) + '°F' : '--';
+    desc = obs.textDescription || '';
+    const ws = obs.windSpeed?.value;
+    const wd = obs.windDirection?.value;
+    if (ws != null) {
+      const mph = Math.round(ws * 0.621371);
+      const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+      const dirStr = wd != null ? dirs[Math.round(wd/22.5)%16] : '';
+      wind = `Wind: ${dirStr} ${mph} mph`;
+    }
+    if (obs.relativeHumidity?.value != null) humidity = `Humidity: ${Math.round(obs.relativeHumidity.value)}%`;
+  } else if (forecast?.properties?.periods?.[0]) {
+    const p = forecast.properties.periods[0];
+    temp = p.temperature + '°F';
+    desc = p.shortForecast;
+    wind = `Wind: ${p.windDirection} ${p.windSpeed}`;
+  }
+
+  curEl.innerHTML = `
+    <div class="weather-icon">${getWeatherEmoji(desc)}</div>
+    <div>
+      <div class="weather-temp">${temp}</div>
+      <div class="weather-desc">${desc}</div>
+      <div class="weather-detail">${[wind, humidity].filter(Boolean).join(' · ')}</div>
+      <div class="weather-detail" style="margin-top:2px;">📍 Dry Ridge, KY · Grant County</div>
+    </div>
+  `;
+
+  // 7-day forecast
+  const periods = forecast?.properties?.periods || [];
+  document.getElementById('forecast-grid').innerHTML = periods.slice(0, 14).map(p => `
+    <div class="forecast-day">
+      <div class="day-name">${p.name}</div>
+      <div class="day-icon">${getWeatherEmoji(p.shortForecast)}</div>
+      <div class="day-temp">${p.temperature}°${p.temperatureUnit}</div>
+      <div class="day-desc">${p.shortForecast}</div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// AI FARM SUGGESTION ENGINE
+// ─────────────────────────────────────────────
+function generateAISuggestions() {
+  const suggestions = [];
+  const now = new Date();
+  const month = now.getMonth(); // 0-11
+  const monthName = MONTHS[month];
+  const periods = forecastData?.properties?.periods || [];
+  const today = periods[0] || {};
+  const tonight = periods[1] || {};
+  const tomorrow = periods[2] || {};
+  const todayDesc = (today.shortForecast || '').toLowerCase();
+  const tomorrowDesc = (tomorrow.shortForecast || '').toLowerCase();
+  const temp = today.temperature || 70;
+  const windStr = today.windSpeed || '';
+  const windMph = parseInt(windStr) || 0;
+  const isRainy = todayDesc.includes('rain') || todayDesc.includes('shower') || todayDesc.includes('storm') || todayDesc.includes('drizzle');
+  const isSunny = todayDesc.includes('sunny') || todayDesc.includes('clear') || todayDesc.includes('fair');
+  const isWindy = windMph > 15;
+  const isCloudy = todayDesc.includes('cloud') || todayDesc.includes('overcast');
+  const rainComing = tomorrowDesc.includes('rain') || tomorrowDesc.includes('shower') || tomorrowDesc.includes('storm');
+  const isHot = temp > 90;
+  const isCold = temp < 40;
+  const isFreezing = temp < 32;
+
+  // Check how many dry days ahead
+  let dryDaysAhead = 0;
+  for (let i = 0; i < Math.min(periods.length, 8); i += 2) {
+    if (!(periods[i].shortForecast||'').toLowerCase().match(/rain|shower|storm|drizzle/)) dryDaysAhead++;
+    else break;
+  }
+
+  // ===== HAY & FIELD WORK =====
+  if (month >= 4 && month <= 9) { // May-Oct hay season
+    if (isSunny && !rainComing && dryDaysAhead >= 2 && !isWindy) {
+      suggestions.push({cat:'hay', text:`Perfect hay cutting conditions today — sunny skies, ${temp}°F, and ${dryDaysAhead}+ dry days ahead. Cut today and you'll have ideal drying weather. Get the mower going early while the dew burns off.`});
+    } else if (isSunny && rainComing) {
+      suggestions.push({cat:'hay', text:`Nice today but rain is coming tomorrow. If hay is already cut and drying, get it baled TODAY before the rain moves in. Otherwise, hold off on cutting — not enough dry time.`});
+    } else if (isRainy) {
+      suggestions.push({cat:'hay', text:`Rain day — no hay work today. Good time to sharpen mower blades, check baler belts and twine inventory, or grease equipment for the next cutting window.`});
+    }
+    if (month === 5 && !isRainy) suggestions.push({cat:'hay', text:'June is prime first-cutting season. Scout your hay fields for readiness — timothy and orchard grass should be heading out. Test a small section if unsure.'});
+    if (month === 6 && !isRainy) suggestions.push({cat:'hay', text:'Mid-summer second cutting window. Fields should have 4-6 weeks of regrowth. Check soil moisture before cutting — stressed fields may need another week.'});
+  }
+  if (isRainy && (month >= 2 && month <= 9)) {
+    suggestions.push({cat:'hay', text:`Rain is fertilizing your fields naturally today. After it clears, give fields 2-3 days to firm up before running heavy equipment to avoid compaction and ruts.`});
+  }
+
+  // ===== MOWING & WEED EATING =====
+  if (month >= 3 && month <= 10) { // Apr-Nov mowing season
+    if (isSunny && temp > 50 && temp < 95 && !isWindy) {
+      suggestions.push({cat:'mowing', text:`Great mowing weather — ${temp}°F and ${todayDesc}. Hit the pavilion area, road shoulders, and fence lines. ${temp > 80 ? 'Start early before the heat peaks.' : 'Comfortable temps all day for outdoor work.'}`});
+    } else if (isRainy) {
+      suggestions.push({cat:'mowing', text:'Too wet to mow today. Sharpen trimmer line, clean mower decks, and check blade condition. Wet grass will be thick when it dries — plan for a longer session next clear day.'});
+    }
+    if (month >= 4 && month <= 6 && isSunny) {
+      suggestions.push({cat:'mowing', text:'Peak growing season — grass and weeds are growing fast. Prioritize weed eating around fence posts, pond banks, and the pavilion. Hitting weeds before they seed saves work all summer.'});
+    }
+    if (isHot) {
+      suggestions.push({cat:'mowing', text:`${temp}°F today — dangerously hot. If you must mow, go early morning only (before 10am). Keep water on the UTV. Heat stress is real — take breaks every 30 minutes.`});
+    }
+  }
+
+  // ===== HUNTING PREP =====
+  if (month >= 2 && month <= 4) { // Mar-May: spring prep
+    if (!isRainy && temp > 45) {
+      suggestions.push({cat:'hunting', text:'Spring food plot season — disk and prep sunflower fields for dove season. Soil temp needs to be 50°F+ for sunflower germination. Plant 90-day varieties by mid-May for September harvest.'});
+    }
+    if (month === 3) suggestions.push({cat:'hunting', text:'Turkey season is near. Scout for gobbler activity early morning. Set up trail cameras near known roost trees and strut zones.'});
+  }
+  if (month >= 6 && month <= 7) { // Jul-Aug: dove prep
+    suggestions.push({cat:'hunting', text:`Check sunflower progress — they should be ${month===6?'3-4 feet tall and growing':'approaching maturity with heads forming'}. Walk plots and look for good dove roosting trees nearby. Plan your blind placement.`});
+    if (month === 7) suggestions.push({cat:'hunting', text:'Late August: Time to knock down sunflowers for dove. Disk strips through the plot — leave some standing for cover. Set up water sources. Dove opener is just days away!'});
+  }
+  if (month === 8) { // September
+    suggestions.push({cat:'hunting', text:'🎯 DOVE SEASON! Shoot times are 30 min before sunrise. Check wind direction for blind placement. Doves prefer to land into the wind. Decoys work best on bare ground near knocked-down sunflowers.'});
+    suggestions.push({cat:'hunting', text:'Start scouting for deer — velvet is coming off. Hang trail cameras on field edges and known travel corridors. Note wind patterns for October bow season stand placement.'});
+  }
+  if (month >= 9 && month <= 11) { // Oct-Dec: deer season
+    if (!isRainy && !isWindy) {
+      suggestions.push({cat:'hunting', text:`Good hunting conditions — ${temp}°F, ${todayDesc}. ${month===10?'Rut activity is building. Hunt morning and evening near scrapes and rub lines.':month===9?'Early bow season — focus on food sources. Deer are still on summer patterns.':'Peak rut — all-day sits are worth it. Bucks are moving midday.'}`});
+    }
+    if (isRainy && month >= 9) {
+      suggestions.push({cat:'hunting', text:'Rain can be excellent for deer movement — they often feed heavily right before and after storms. Post up on a food plot edge if the rain is light. Heavy rain? Stay in and prep gear.'});
+    }
+    if (isCold && month >= 10) {
+      suggestions.push({cat:'hunting', text:`Cold front moving through (${temp}°F) — deer will be on their feet feeding aggressively. This is a money day for hunting. Bundle up and sit all day near food plots.`});
+    }
+  }
+
+  // ===== EQUIPMENT MAINTENANCE =====
+  const dueEquip = equipment.filter(e => {
+    const s = getServiceStatus(e);
+    return s.status === 'due' || s.status === 'overdue';
+  });
+  if (dueEquip.length > 0) {
+    const names = dueEquip.map(e => e.name).join(', ');
+    if (isRainy) {
+      suggestions.push({cat:'equipment', text:`Rain day = shop day! You have ${dueEquip.length} piece(s) needing service: ${names}. Perfect time to knock out oil changes, grease zerks, and check belts while you can't be in the field.`});
+    } else {
+      suggestions.push({cat:'equipment', text:`Equipment service reminder: ${names} ${dueEquip.length > 1 ? 'are' : 'is'} due for maintenance. Schedule a shop session soon to avoid breakdowns during busy field work.`});
+    }
+  }
+  if (isCold && month >= 10) {
+    suggestions.push({cat:'equipment', text:'Cold weather coming — check antifreeze levels in all tractors and the UTV. Make sure batteries are charged. Diesel equipment may need glow plug checks or block heaters.'});
+  }
+  if (month === 2) suggestions.push({cat:'equipment', text:'March is pre-season service month. Go through every piece of equipment — change oil and filters, grease all zerks, check hydraulic levels, inspect tires, and test all implements before spring work starts.'});
+
+  // ===== GENERAL PROPERTY =====
+  if (isRainy && !isFreezing) {
+    suggestions.push({cat:'property', text:'After heavy rain, walk your pond dams and check for erosion, seepage, or overflow issues. Also check low-water crossings and road drainage. Catch problems early before they get expensive.'});
+  }
+  if (isSunny && (month >= 2 && month <= 4)) {
+    suggestions.push({cat:'property', text:'Spring is fence-check season. Walk all fence lines looking for winter damage — fallen trees, broken posts, loose wire. Fix now before cattle or deer pressure makes it worse.'});
+  }
+  if (month >= 9 && month <= 10 && isSunny) {
+    suggestions.push({cat:'property', text:'Good day to prep the pavilion for fall gatherings. Check propane, clean the grill, stock firewood by the fire pit. Clear any wasp nests before the family comes out.'});
+  }
+  if (isFreezing) {
+    suggestions.push({cat:'property', text:`Freeze warning (${temp}°F)! Disconnect and drain any outdoor hoses. Check that pavilion plumbing is winterized. Make sure pond aerators are running to prevent fish kill.`});
+  }
+  if (month === 11) {
+    suggestions.push({cat:'property', text:'December wrap-up: walk all property boundaries, check for trespass signs down, note any timber damage. Start planning next year\'s crop rotation and seed orders — early orders get discounts.'});
+  }
+
+  // If no suggestions generated (shouldn't happen, but just in case)
+  if (!suggestions.length) {
+    suggestions.push({cat:'property', text:`Current conditions: ${temp}°F, ${today.shortForecast || 'N/A'}. Check your calendar tab for scheduled tasks, and walk the property to see what needs attention.`});
+  }
+
+  // Render suggestions
+  const catLabels = {hay:'🌾 Hay & Field Work', hunting:'🎯 Hunting Prep', equipment:'🚜 Equipment', property:'🏡 General Property', mowing:'🌿 Mowing & Weed Eating'};
+  const catClasses = {hay:'ai-cat-hay', hunting:'ai-cat-hunting', equipment:'ai-cat-equipment', property:'ai-cat-property', mowing:'ai-cat-mowing'};
+
+  document.getElementById('ai-suggestions-list').innerHTML = suggestions.map(s => `
+    <div class="ai-card">
+      <div class="ai-category ${catClasses[s.cat]||'ai-cat-property'}">${catLabels[s.cat]||s.cat}</div>
+      <div class="ai-text">${s.text}</div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// WORK ORDERS
+// ─────────────────────────────────────────────
+const WO_KEY = 'snellWorkOrders';
+let workOrders = [];
+let editingWOId = null;
+let woBeforePhotos = [];
+let woAfterPhotos = [];
+let woFilter = 'all';
+
+function loadWorkOrders() {
+  try { const r = localStorage.getItem(WO_KEY); if (r) workOrders = JSON.parse(r); } catch(e) { workOrders = []; }
+  renderWorkOrders();
+}
+function saveWorkOrders() {
+  try { localStorage.setItem(WO_KEY, JSON.stringify(workOrders)); } catch(e) {}
+  showSaved();
+}
+
+const WO_CAT_LABELS = {hay:'🌾 Hay & Field', hunting:'🎯 Hunting', equipment:'🚜 Equipment', property:'🏡 Property', mowing:'🌿 Mowing'};
+const WO_STATUS_LABELS = {open:'Open', progress:'In Progress', done:'Done'};
+
+function renderWorkOrders() {
+  const list = document.getElementById('wo-list');
+  let filtered = workOrders;
+  if (woFilter !== 'all') filtered = workOrders.filter(w => w.status === woFilter);
+
+  // Sort: open first, then in-progress, then done; within each group, newest first
+  const statusOrder = {open:0, progress:1, done:2};
+  filtered.sort((a,b) => (statusOrder[a.status]||0) - (statusOrder[b.status]||0) || (b.created||0) - (a.created||0));
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="wo-empty" style="grid-column:1/-1;">${woFilter==='all'?'No work orders yet. Click "+ New Work Order" to create one.':'No '+WO_STATUS_LABELS[woFilter]+' work orders.'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(w => {
+    const hasBeforePhotos = w.beforePhotos && w.beforePhotos.length;
+    const hasAfterPhotos = w.afterPhotos && w.afterPhotos.length;
+    const photoCount = (hasBeforePhotos ? w.beforePhotos.length : 0) + (hasAfterPhotos ? w.afterPhotos.length : 0);
+    return `<div class="wo-card wo-priority-${w.priority||'medium'}" onclick="openEditWO('${w.id}')">
+      <div class="wo-card-header">
+        <div class="wo-card-title">${w.title||'Untitled'}</div>
+        <span class="wo-card-cat wo-cat-${w.category||'property'}">${WO_CAT_LABELS[w.category]||w.category}</span>
+      </div>
+      ${w.desc ? `<div class="wo-card-desc">${w.desc.length>120?w.desc.substring(0,120)+'…':w.desc}</div>` : ''}
+      <div class="wo-card-meta">
+        <span class="wo-status-badge wo-status-${w.status||'open'}">${WO_STATUS_LABELS[w.status]||'Open'}</span>
+        <span>${w.priority==='high'?'🔴 High':w.priority==='low'?'🟢 Low':'🟡 Medium'}</span>
+        ${w.created ? `<span>${new Date(w.created).toLocaleDateString()}</span>` : ''}
+        ${photoCount ? `<span>📷 ${photoCount} photo${photoCount>1?'s':''}</span>` : ''}
+      </div>
+      ${hasBeforePhotos || hasAfterPhotos ? `<div class="wo-photos-row">
+        ${(w.beforePhotos||[]).slice(0,3).map(p=>`<div><img class="wo-photo-thumb" src="${p}" onclick="event.stopPropagation();viewPhoto('${p.substring(0,50)}')"><div class="wo-photo-label">Before</div></div>`).join('')}
+        ${(w.afterPhotos||[]).slice(0,3).map(p=>`<div><img class="wo-photo-thumb" src="${p}" onclick="event.stopPropagation();viewPhoto('${p.substring(0,50)}')"><div class="wo-photo-label">After</div></div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function filterWO(filter, btn) {
+  woFilter = filter;
+  document.querySelectorAll('.wo-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderWorkOrders();
+}
+
+function openAddWO() {
+  editingWOId = null;
+  woBeforePhotos = [];
+  woAfterPhotos = [];
+  document.getElementById('wo-modal-title').textContent = '📋 New Work Order';
+  document.getElementById('wo-title').value = '';
+  document.getElementById('wo-category').value = 'property';
+  document.getElementById('wo-priority').value = 'medium';
+  document.getElementById('wo-status').value = 'open';
+  document.getElementById('wo-desc').value = '';
+  document.getElementById('wo-delete-btn').style.display = 'none';
+  renderWOPhotoPreviews();
+  document.getElementById('wo-modal').classList.remove('hidden');
+}
+
+function openEditWO(id) {
+  const w = workOrders.find(x => x.id === id);
+  if (!w) return;
+  editingWOId = id;
+  woBeforePhotos = [...(w.beforePhotos || [])];
+  woAfterPhotos = [...(w.afterPhotos || [])];
+  document.getElementById('wo-modal-title').textContent = '📋 Edit Work Order';
+  document.getElementById('wo-title').value = w.title || '';
+  document.getElementById('wo-category').value = w.category || 'property';
+  document.getElementById('wo-priority').value = w.priority || 'medium';
+  document.getElementById('wo-status').value = w.status || 'open';
+  document.getElementById('wo-desc').value = w.desc || '';
+  document.getElementById('wo-delete-btn').style.display = 'inline-block';
+  renderWOPhotoPreviews();
+  document.getElementById('wo-modal').classList.remove('hidden');
+}
+
+function saveWO() {
+  const title = document.getElementById('wo-title').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  const data = {
+    title,
+    category: document.getElementById('wo-category').value,
+    priority: document.getElementById('wo-priority').value,
+    status: document.getElementById('wo-status').value,
+    desc: document.getElementById('wo-desc').value,
+    beforePhotos: woBeforePhotos,
+    afterPhotos: woAfterPhotos,
+  };
+  if (editingWOId) {
+    const w = workOrders.find(x => x.id === editingWOId);
+    if (w) {
+      Object.assign(w, data);
+      if (data.status === 'done' && !w.completed) w.completed = Date.now();
+    }
+  } else {
+    workOrders.push({ ...data, id: 'wo_' + Date.now(), created: Date.now() });
+  }
+  saveWorkOrders();
+  renderWorkOrders();
+  closeModal('wo-modal');
+}
+
+function deleteWO() {
+  if (!confirm('Delete this work order?')) return;
+  workOrders = workOrders.filter(x => x.id !== editingWOId);
+  saveWorkOrders();
+  renderWorkOrders();
+  closeModal('wo-modal');
+}
+
+function renderWOPhotoPreviews() {
+  document.getElementById('wo-before-preview').innerHTML = woBeforePhotos.map((p, i) =>
+    `<div style="position:relative;display:inline-block;"><img class="photo-thumb" src="${p}" onclick="viewPhotoData(${i},'before')" style="cursor:pointer;"><button onclick="removeWOPhoto(${i},'before')" style="position:absolute;top:-4px;right:-4px;background:#8b0000;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:16px;text-align:center;">✕</button></div>`
+  ).join('') || '<span style="font-size:11px;color:#555;padding:8px;">No photos yet</span>';
+  document.getElementById('wo-after-preview').innerHTML = woAfterPhotos.map((p, i) =>
+    `<div style="position:relative;display:inline-block;"><img class="photo-thumb" src="${p}" onclick="viewPhotoData(${i},'after')" style="cursor:pointer;"><button onclick="removeWOPhoto(${i},'after')" style="position:absolute;top:-4px;right:-4px;background:#8b0000;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:16px;text-align:center;">✕</button></div>`
+  ).join('') || '<span style="font-size:11px;color:#555;padding:8px;">No photos yet</span>';
+}
+
+function removeWOPhoto(idx, type) {
+  if (type === 'before') woBeforePhotos.splice(idx, 1);
+  else woAfterPhotos.splice(idx, 1);
+  renderWOPhotoPreviews();
+}
+
+document.getElementById('wo-before-photos').addEventListener('change', function() {
+  Array.from(this.files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => { woBeforePhotos.push(e.target.result); renderWOPhotoPreviews(); };
+    r.readAsDataURL(f);
+  }); this.value = '';
+});
+document.getElementById('wo-after-photos').addEventListener('change', function() {
+  Array.from(this.files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => { woAfterPhotos.push(e.target.result); renderWOPhotoPreviews(); };
+    r.readAsDataURL(f);
+  }); this.value = '';
+});
+
+function viewPhotoData(idx, type) {
+  const photos = type === 'before' ? woBeforePhotos : woAfterPhotos;
+  if (photos[idx]) {
+    document.getElementById('photo-viewer-img').src = photos[idx];
+    document.getElementById('photo-viewer-modal').classList.remove('hidden');
+  }
+}
+
+// Initialize work orders
+loadWorkOrders();
+
+// ─────────────────────────────────────────────
+// MIGRATORY GAME BIRD TRACKER
+// ─────────────────────────────────────────────
+const GAME_BIRDS = [
+  {
+    id:'mourning-dove', name:'Mourning Dove', sci:'Zenaida macroura', icon:'🕊️',
+    type:'migratory',
+    // presence[month 0-11] = 0 (absent), 1 (some/arriving), 2 (peak), 3 (resident/common)
+    presence:[1,1,2,2,3,3,3,3,3,2,1,1],
+    migrationNote:'Year-round in KY but numbers surge mid-March through October. Peak populations July–September as northern birds stage before heading south.',
+    huntSeason:'Sep 1 – Oct 26, 2026 & Dec 13 – Jan 11, 2027',
+    huntNote:'Bag limit: 15/day. Shoot hours: 30 min before sunrise to sunset. Requires HIP registration.',
+    tips:'Scout harvested grain fields, sunflower plots, and watering holes. Doves feed early morning and late afternoon. Power lines near food sources are prime roosting spots.',
+    peakMonths:'Jul–Sep',
+  },
+  {
+    id:'wood-duck', name:'Wood Duck', sci:'Aix sponsa', icon:'🦆',
+    type:'migratory',
+    presence:[0,1,2,3,3,3,3,3,2,2,1,0],
+    migrationNote:'Arrives late February. Breeds in wooded ponds and creeks March–July. Most depart by November. Some overwinter in mild years.',
+    huntSeason:'Oct 10 – Nov 29, 2026 & Dec 12 – Jan 31, 2027',
+    huntNote:'Bag limit: 3/day (within 6-duck total). Wood ducks are often the first duck in the bag on opening day in KY.',
+    tips:'Check your ponds at dawn — wood ducks love small wooded ponds. Set up decoys near fallen logs and overhanging branches. They respond well to squealer calls.',
+    peakMonths:'Mar–Sep',
+  },
+  {
+    id:'mallard', name:'Mallard', sci:'Anas platyrhynchos', icon:'🦆',
+    type:'migratory',
+    presence:[2,1,1,1,1,1,1,1,2,3,3,3],
+    migrationNote:'Peak migration through KY in November–December. Some present year-round but big northern flights arrive with cold fronts in late October.',
+    huntSeason:'Oct 10 – Nov 29, 2026 & Dec 12 – Jan 31, 2027',
+    huntNote:'Bag limit: 4/day (2 hen limit within 6-duck total). Kentucky\'s most popular duck species.',
+    tips:'Mallards follow cold fronts south. Watch weather for Alberta clippers and strong north winds — birds will push through within 24-48 hours. Flooded fields and pond edges are money spots.',
+    peakMonths:'Nov–Jan',
+  },
+  {
+    id:'teal', name:'Blue-Winged Teal', sci:'Spatula discors', icon:'🦆',
+    type:'migratory',
+    presence:[0,0,1,2,2,2,2,3,3,2,0,0],
+    migrationNote:'Early migrants — first ducks moving south in late August/September. Spring arrival in March. One of the first waterfowl species to migrate each fall.',
+    huntSeason:'Early season: Sep 5–20, 2026. Regular: Oct 10 – Jan 31',
+    huntNote:'Bag limit: 6/day during early teal season. Fast flyers — small shot (#6) and quick swing.',
+    tips:'Check shallow pond edges and mudflats in September. Teal come in fast and low — be ready. Small spread of teal decoys with a spinning-wing decoy is deadly during early season.',
+    peakMonths:'Sep–Oct',
+  },
+  {
+    id:'canada-goose', name:'Canada Goose', sci:'Branta canadensis', icon:'🪿',
+    type:'migratory',
+    presence:[3,2,2,2,2,2,2,2,2,3,3,3],
+    migrationNote:'Resident population year-round in KY. Migratory flocks from the north arrive October–November and stay through March. Peak numbers December–February.',
+    huntSeason:'Early: Sep 1–15, 2026. Regular: Nov 14 – Feb 15, 2027',
+    huntNote:'Bag limit: 2/day (early season), 3/day (regular season). HIP registration required.',
+    tips:'Resident geese feed on hay fields and pond banks. Migratory birds follow river valleys. Scout evening roost flights to pattern them. Full-body decoys in family groups of 6-12 work best.',
+    peakMonths:'Nov–Feb',
+  },
+  {
+    id:'wild-turkey', name:'Wild Turkey', sci:'Meleagris gallopavo', icon:'🦃',
+    type:'resident',
+    presence:[3,3,3,3,3,3,3,3,3,3,3,3],
+    migrationNote:'Year-round resident. Not migratory. Spring gobbling activity peaks April–May. Fall flocks form September–October.',
+    huntSeason:'Spring: Apr 18 – May 10, 2026. Fall: Oct 17 – Dec 6, 2026',
+    huntNote:'Spring: 1 bearded bird/day, 2 season total. Fall: 1 either sex/day, 2 season total.',
+    tips:'Scout for strut zones in open fields near woods edges. Gobblers respond best to calling the first 2 hours after sunrise. Pattern birds with trail cameras on field edges.',
+    peakMonths:'Year-round',
+  },
+  {
+    id:'woodcock', name:'American Woodcock', sci:'Scolopax minor', icon:'🪶',
+    type:'migratory',
+    presence:[0,1,2,2,1,0,0,0,0,2,2,1],
+    migrationNote:'Spring migration peaks March–April. Fall migration October–November. KY is a major migration corridor. They follow earthworm activity and soil moisture.',
+    huntSeason:'Oct 17 – Nov 30, 2026',
+    huntNote:'Bag limit: 3/day. Hunt wet bottomlands and young forest edges at dawn/dusk.',
+    tips:'Look for "whitewash" (droppings) and probe holes in moist soil near creek bottoms and alder thickets. Woodcock hold tight — a good bird dog is essential. They flush straight up before leveling off.',
+    peakMonths:'Mar–Apr, Oct–Nov',
+  },
+];
+
+function getBirdStatus(bird) {
+  const month = new Date().getMonth();
+  const p = bird.presence[month];
+  const nextMonth = (month + 1) % 12;
+  const prevMonth = (month + 11) % 12;
+  const nextP = bird.presence[nextMonth];
+  const prevP = bird.presence[prevMonth];
+
+  if (bird.type === 'resident') return {label:'Resident', cls:'bird-resident', desc:'Year-round resident'};
+  if (p >= 3) return {label:'Peak', cls:'bird-active', desc:'Peak presence — highest numbers of the year'};
+  if (p === 2) {
+    if (nextP > p) return {label:'Building', cls:'bird-arriving', desc:'Numbers increasing — more arriving soon'};
+    if (nextP < p) return {label:'Peak Ending', cls:'bird-active', desc:'Still strong numbers but starting to thin out'};
+    return {label:'Present', cls:'bird-active', desc:'Good numbers present in the area'};
+  }
+  if (p === 1) {
+    if (nextP > p) return {label:'Arriving', cls:'bird-arriving', desc:'Early birds arriving — scout now'};
+    if (prevP > p) return {label:'Departing', cls:'bird-departing', desc:'Most have moved on — stragglers remain'};
+    return {label:'Low Numbers', cls:'bird-departing', desc:'Small numbers present'};
+  }
+  return {label:'Absent', cls:'bird-absent', desc:'Not expected in the area this time of year'};
+}
+
+function isSeasonOpen(bird) {
+  // Simplified check — parse season string for current month
+  const now = new Date();
+  const seasonStr = bird.huntSeason.toLowerCase();
+  const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const curMonth = monthNames[now.getMonth()];
+  // Basic heuristic: check if current month name appears in season string
+  if (seasonStr.includes(curMonth)) return true;
+  // Check date ranges more precisely for current month
+  return false;
+}
+
+function renderBirdTracker() {
+  const now = new Date();
+  const month = now.getMonth();
+  const monthPct = ((month + now.getDate()/30) / 12 * 100);
+
+  // Summary stats
+  const activeCount = GAME_BIRDS.filter(b => b.presence[month] >= 2).length;
+  const openSeasons = GAME_BIRDS.filter(b => isSeasonOpen(b)).length;
+  const arrivingCount = GAME_BIRDS.filter(b => {
+    const s = getBirdStatus(b);
+    return s.label === 'Arriving' || s.label === 'Building';
+  }).length;
+
+  document.getElementById('bird-summary').innerHTML = `
+    <div class="bird-summary-box"><div class="num">${activeCount}</div><div class="lbl">Species Active Now</div></div>
+    <div class="bird-summary-box"><div class="num">${openSeasons}</div><div class="lbl">Seasons Open</div></div>
+    <div class="bird-summary-box"><div class="num">${arrivingCount}</div><div class="lbl">Arriving / Building</div></div>
+    <div class="bird-summary-box"><div class="num">${GAME_BIRDS.length}</div><div class="lbl">Species Tracked</div></div>
+  `;
+
+  // Species cards
+  const monthLabels = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const presenceColors = {0:'#1a1a1a', 1:'#2a3a2a', 2:'#2d6a4f', 3:'#95d5b2'};
+
+  document.getElementById('bird-species-grid').innerHTML = GAME_BIRDS.map(bird => {
+    const status = getBirdStatus(bird);
+    const seasonOpen = isSeasonOpen(bird);
+
+    // Build timeline bar segments
+    const segments = bird.presence.map((p, i) =>
+      `<div class="bird-timeline-seg" style="width:${100/12}%;background:${presenceColors[p]};${i===month?'outline:1px solid #fff;outline-offset:-1px;z-index:1;border-radius:2px;':''}"></div>`
+    ).join('');
+
+    return `<div class="bird-card">
+      <div class="bird-season-badge ${seasonOpen?'bird-season-open':''}">${seasonOpen?'🟢 Season Open':'Season Closed'}</div>
+      <div class="bird-card-header">
+        <div class="bird-card-icon">${bird.icon}</div>
+        <div class="bird-card-info">
+          <h3>${bird.name}</h3>
+          <div class="bird-sci">${bird.sci}</div>
+        </div>
+      </div>
+      <div class="bird-status-row">
+        <span class="bird-status ${status.cls}">${status.label}</span>
+        <span style="font-size:11px;color:#888;">${status.desc}</span>
+      </div>
+      <div class="bird-timeline">
+        <div class="bird-timeline-bar">${segments}</div>
+        <div class="bird-timeline-marker" style="left:${monthPct}%;"></div>
+        <div class="bird-timeline-labels">${monthLabels.map(m=>`<span>${m}</span>`).join('')}</div>
+      </div>
+      <div class="bird-detail">${bird.migrationNote}</div>
+      <div class="bird-hunt-dates">
+        <strong>🎯 Season:</strong> ${bird.huntSeason}<br>
+        <span style="font-size:11px;color:#888;">${bird.huntNote}</span>
+      </div>
+      <div class="bird-detail" style="margin-top:8px;"><strong>💡 Tips:</strong> ${bird.tips}</div>
+    </div>`;
+  }).join('');
+}
+/* ===== WILDLIFE SEASONS ===== */
+const KY_SEASONS = [
+  // DEER
+  {species:'White-tailed Deer',type:'Archery',dates:'Sep 6, 2025 – Jan 19, 2026',start:'2025-09-06',end:'2026-01-19',bag:'Zone 1: Unlimited antlerless w/ permits; 1 antlered per license year',cat:'deer',icon:'🦌'},
+  {species:'White-tailed Deer',type:'Crossbow',dates:'Sep 20, 2025 – Jan 19, 2026',start:'2025-09-20',end:'2026-01-19',bag:'Same as archery season limits',cat:'deer',icon:'🦌'},
+  {species:'White-tailed Deer',type:'Early Muzzleloader',dates:'Oct 18–19, 2025',start:'2025-10-18',end:'2025-10-19',bag:'1 deer either sex',cat:'deer',icon:'🦌'},
+  {species:'White-tailed Deer',type:'Modern Gun',dates:'Nov 8–23, 2025',start:'2025-11-08',end:'2025-11-23',bag:'1 antlered + unlimited antlerless w/ permits',cat:'deer',icon:'🦌'},
+  {species:'White-tailed Deer',type:'Late Muzzleloader',dates:'Dec 13–21, 2025',start:'2025-12-13',end:'2025-12-21',bag:'1 deer either sex',cat:'deer',icon:'🦌'},
+
+  // TURKEY
+  {species:'Wild Turkey',type:'Fall Archery',dates:'Sep 6, 2025 – Jan 19, 2026',start:'2025-09-06',end:'2026-01-19',bag:'2 total: 1 bearded + 1 non-bearded; daily limit 1',cat:'turkey',icon:'🦃'},
+  {species:'Wild Turkey',type:'Fall Crossbow',dates:'Oct 1–19 & Nov 8 – Dec 31, 2025',start:'2025-10-01',end:'2025-12-31',bag:'2 total: 1 bearded + 1 non-bearded; daily limit 1',cat:'turkey',icon:'🦃'},
+  {species:'Wild Turkey',type:'Fall Shotgun',dates:'Oct 25–31 & Dec 6–12, 2025',start:'2025-10-25',end:'2025-12-12',bag:'2 total: 1 bearded + 1 non-bearded; daily limit 1',cat:'turkey',icon:'🦃'},
+  {species:'Wild Turkey',type:'Spring Youth Hunt',dates:'Apr 4–5, 2026',start:'2026-04-04',end:'2026-04-05',bag:'1 male or bearded turkey',cat:'turkey',icon:'🦃'},
+  {species:'Wild Turkey',type:'Spring Regular',dates:'Apr 18 – May 10, 2026',start:'2026-04-18',end:'2026-05-10',bag:'2 males/bearded turkeys total for spring season',cat:'turkey',icon:'🦃'},
+
+  // SMALL GAME
+  {species:'Squirrel',type:'Fall Season',dates:'Aug 16 – Nov 7, 2025 & Nov 10, 2025 – Feb 28, 2026',start:'2025-08-16',end:'2026-02-28',bag:'6 per day',cat:'small',icon:'🐿️'},
+  {species:'Squirrel',type:'Spring Season',dates:'May 17 – Jun 15, 2025',start:'2025-05-17',end:'2025-06-15',bag:'6 per day',cat:'small',icon:'🐿️'},
+  {species:'Rabbit',type:'Eastern Zone',dates:'Nov 1–7, 2025 & Nov 10, 2025 – Jan 31, 2026',start:'2025-11-01',end:'2026-01-31',bag:'4 per day',cat:'small',icon:'🐇'},
+  {species:'Quail',type:'Eastern Zone',dates:'Nov 1–7, 2025 & Nov 10, 2025 – Jan 31, 2026',start:'2025-11-01',end:'2026-01-31',bag:'8 per day',cat:'small',icon:'🐦'},
+  {species:'Ruffed Grouse',type:'Statewide',dates:'Nov 1–7, 2025 & Nov 10, 2025 – Feb 10, 2026',start:'2025-11-01',end:'2026-02-10',bag:'4 per day',cat:'small',icon:'🐦'},
+
+  // WATERFOWL
+  {species:'Ducks',type:'Split Season (60 days)',dates:'Nov 27–30 & Dec 7, 2025 – Jan 31, 2026',start:'2025-11-27',end:'2026-01-31',bag:'6 per day (species restrictions apply)',cat:'waterfowl',icon:'🦆'},
+  {species:'Early Teal / Wood Duck',type:'September Season',dates:'Sep 20–24, 2025',start:'2025-09-20',end:'2025-09-24',bag:'6 per day (max 2 wood ducks)',cat:'waterfowl',icon:'🦆'},
+  {species:'Canada / Cackling Goose',type:'Regular Season',dates:'Nov 27, 2025 – Feb 15, 2026',start:'2025-11-27',end:'2026-02-15',bag:'5 per day (max 3 Canada)',cat:'waterfowl',icon:'🪿'},
+  {species:'Canada Goose',type:'September (Eastern Zone)',dates:'Sep 16–30, 2025',start:'2025-09-16',end:'2025-09-30',bag:'5 per day',cat:'waterfowl',icon:'🪿'},
+
+  // MIGRATORY BIRDS
+  {species:'Mourning Dove',type:'3-Part Season',dates:'Sep 1 – Oct 26, Nov 27 – Dec 7, Dec 20 – Jan 11',start:'2025-09-01',end:'2026-01-11',bag:'15 per day',cat:'migratory',icon:'🕊️'},
+  {species:'American Woodcock',type:'Split Season',dates:'Oct 25 – Nov 7 & Nov 10 – Dec 10, 2025',start:'2025-10-25',end:'2025-12-10',bag:'3 per day',cat:'migratory',icon:'🐦'},
+  {species:'Common Snipe',type:'Split Season',dates:'Sep 17 – Oct 26 & Nov 27, 2025 – Feb 1, 2026',start:'2025-09-17',end:'2026-02-01',bag:'8 per day',cat:'migratory',icon:'🐦'},
+  {species:'Virginia & Sora Rail',type:'Season',dates:'Sep 1 – Nov 9, 2025',start:'2025-09-01',end:'2025-11-09',bag:'25 per day combined',cat:'migratory',icon:'🐦'},
+  {species:'Crow',type:'Split Season',dates:'Sep 1 – Nov 7, 2025 & Jan 4 – Feb 28, 2026',start:'2025-09-01',end:'2026-02-28',bag:'No daily limit',cat:'migratory',icon:'🐦‍⬛'},
+
+  // FURBEARERS
+  {species:'Raccoon & Opossum',type:'Hunting/Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'No daily limit',cat:'furbearer',icon:'🦝'},
+  {species:'Coyote',type:'Hunting',dates:'Year-round (day or night)',start:'2025-01-01',end:'2025-12-31',bag:'No limit',cat:'furbearer',icon:'🐺'},
+  {species:'Bobcat',type:'Hunting/Trapping',dates:'Nov 15, 2025 – Feb 28, 2026',start:'2025-11-15',end:'2026-02-28',bag:'Daylight hours only',cat:'furbearer',icon:'🐱'},
+  {species:'Red Fox & Gray Fox',type:'Hunting/Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'No daily limit',cat:'furbearer',icon:'🦊'},
+  {species:'Mink & Muskrat',type:'Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'Daylight hours; check required',cat:'furbearer',icon:'🦦'},
+  {species:'Beaver',type:'Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'No daily limit',cat:'furbearer',icon:'🦫'},
+  {species:'Striped Skunk & Weasel',type:'Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'No daily limit',cat:'furbearer',icon:'🦨'},
+  {species:'River Otter',type:'Trapping',dates:'Nov 10, 2025 – Feb 28, 2026',start:'2025-11-10',end:'2026-02-28',bag:'Permit required; check-in required',cat:'furbearer',icon:'🦦'},
+
+  // OTHER
+  {species:'Black Bear',type:'Firearms (Zone 1)',dates:'Dec 13–15, 2025',start:'2025-12-13',end:'2025-12-15',bag:'Permit required; limited quota',cat:'other',icon:'🐻'},
+  {species:'Elk',type:'Permit Hunt',dates:'Sep 27 – Oct 8, 2025',start:'2025-09-27',end:'2025-10-08',bag:'Elk zone only (SE KY); permit required',cat:'other',icon:'🫎'}
+];
+
+const WS_CAT_INFO = {
+  deer:{label:'Deer',cls:'ws-cat-deer',icon:'🦌'},
+  turkey:{label:'Turkey',cls:'ws-cat-turkey',icon:'🦃'},
+  small:{label:'Small Game',cls:'ws-cat-small',icon:'🐿️'},
+  waterfowl:{label:'Waterfowl',cls:'ws-cat-waterfowl',icon:'🦆'},
+  migratory:{label:'Migratory Birds',cls:'ws-cat-migratory',icon:'🕊️'},
+  furbearer:{label:'Furbearers',cls:'ws-cat-furbearer',icon:'🦊'},
+  other:{label:'Other Big Game',cls:'ws-cat-other',icon:'🐻'}
+};
+
+function getSeasonStatus(s){
+  const now=new Date();
+  const start=new Date(s.start+'T00:00:00');
+  const end=new Date(s.end+'T23:59:59');
+  const soon=new Date(start);
+  soon.setDate(soon.getDate()-14);
+  if(s.species==='Coyote') return {label:'OPEN',cls:'ws-badge-open'};
+  if(now>=start && now<=end) return {label:'OPEN',cls:'ws-badge-open'};
+  if(now>=soon && now<start) return {label:'SOON',cls:'ws-badge-soon'};
+  return {label:'CLOSED',cls:'ws-badge-closed'};
+}
+
+function renderWildlifeSeasons(){
+  const now=new Date();
+  let openCount=0, soonCount=0, closedCount=0;
+  KY_SEASONS.forEach(s=>{
+    const st=getSeasonStatus(s);
+    if(st.label==='OPEN') openCount++;
+    else if(st.label==='SOON') soonCount++;
+    else closedCount++;
+  });
+
+  document.getElementById('ws-status-bar').innerHTML=
+    `<div class="ws-status-chip ws-chip-open">🟢 ${openCount} Open Now</div>`+
+    `<div class="ws-status-chip ws-chip-soon">🟡 ${soonCount} Opening Soon</div>`+
+    `<div class="ws-status-chip ws-chip-closed">🔴 ${closedCount} Closed</div>`;
+
+  // Year timeline
+  const yearStart=new Date('2025-05-01');
+  const yearEnd=new Date('2026-04-30');
+  const totalMs=yearEnd-yearStart;
+  const nowPct=Math.max(0,Math.min(100,((now-yearStart)/totalMs)*100));
+  const colors={deer:'#ffd700',turkey:'#ff6b35',small:'#95d5b2',waterfowl:'#87ceeb',migratory:'#deb887',furbearer:'#dda0dd',other:'#ccc'};
+  let tlHtml='';
+  KY_SEASONS.forEach(s=>{
+    const st=new Date(s.start+'T00:00:00');
+    const en=new Date(s.end+'T23:59:59');
+    const left=Math.max(0,((st-yearStart)/totalMs)*100);
+    const width=Math.max(0.3,((en-st)/totalMs)*100);
+    tlHtml+=`<div class="ws-timeline-seg" style="left:${left}%;width:${width}%;background:${colors[s.cat]||'#666'};"></div>`;
+  });
+  tlHtml+=`<div class="ws-timeline-now" style="left:${nowPct}%;"></div>`;
+  document.getElementById('ws-year-timeline').innerHTML=tlHtml;
+
+  const mos=['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+  document.getElementById('ws-year-months').innerHTML=mos.map(m=>`<span>${m}</span>`).join('');
+
+  // Categories
+  const cats=['deer','turkey','small','waterfowl','migratory','furbearer','other'];
+  let catHtml='';
+  cats.forEach(cat=>{
+    const info=WS_CAT_INFO[cat];
+    const seasons=KY_SEASONS.filter(s=>s.cat===cat);
+    if(!seasons.length) return;
+    catHtml+=`<div class="ws-category">`;
+    catHtml+=`<div class="ws-cat-header ${info.cls}">${info.icon} ${info.label}</div>`;
+    catHtml+=`<div class="ws-season-list">`;
+    seasons.forEach(s=>{
+      const status=getSeasonStatus(s);
+      catHtml+=`<div class="ws-season-row">
+        <span class="ws-species">${s.icon} ${s.species}</span>
+        <span class="ws-type">${s.type}</span>
+        <span class="ws-dates">📅 ${s.dates}</span>
+        <span class="ws-bag">🎒 ${s.bag}</span>
+        <span class="ws-badge ${status.cls}">${status.label}</span>
+      </div>`;
+    });
+    catHtml+=`</div></div>`;
+  });
+  document.getElementById('ws-categories').innerHTML=catHtml;
+}
+</script>
+</body>
+</html>
